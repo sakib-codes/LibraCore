@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="librisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+    <linearGradient id="sparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+  </defs>
+  <!-- Background squircle -->
+  <rect width="48" height="48" rx="12" fill="url(#librisGrad)" />
+  
+  <!-- Stylized Open Book -->
+  <path d="M12 32.5C15 31.5 19 31.5 24 33.5C29 31.5 33 31.5 36 32.5V17C33 16 29 16 24 18C19 16 15 16 12 17V32.5Z" 
+        stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M24 18V33.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  
+  <!-- AI Sparkle / Star at top right of book -->
+  <path d="M34 11C34 13.5 36 15.5 38.5 15.5C36 15.5 34 17.5 34 20C34 17.5 32 15.5 29.5 15.5C32 15.5 34 13.5 34 11Z" 
+        fill="url(#sparkleGrad)" />
+  <circle cx="21" cy="13" r="1.5" fill="#E0E7FF" opacity="0.85" />
+</svg>

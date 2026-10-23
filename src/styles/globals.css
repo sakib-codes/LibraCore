@@ -1,0 +1,287 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Slate & Indigo Clean Theme (Light) */
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Primary: Clean Indigo #4F46E5 */
+    --primary: 243.4 75.4% 58.6%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary: Light slate tint */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 243.4 75.4% 58.6%;
+
+    /* Semantic badges */
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 12%;
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+
+    /* Charts */
+    --chart-1: 243.4 75.4% 58.6%;
+    --chart-2: 142.1 76.2% 36.3%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 84.2% 60.2%;
+    --chart-5: 280 65% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-primary: 243.4 75.4% 58.6%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 243.4 75.4% 58.6%;
+  }
+
+  .dark {
+    /* Slate & Indigo Clean Theme (Dark) */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary: Vibrant Indigo #6366F1 */
+    --primary: 238.7 83.5% 66.7%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 238.7 83.5% 66.7%;
+
+    /* Semantic badges */
+    --info: 217.2 91.2% 59.8%;
+    --info-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 12%;
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144.9 80.4% 10%;
+
+    /* Charts */
+    --chart-1: 238.7 83.5% 66.7%;
+    --chart-2: 142.1 70.6% 45.3%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 62.8% 30.6%;
+    --chart-5: 280 65% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 222.2 84% 7%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 238.7 83.5% 66.7%;
+    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 238.7 83.5% 66.7%;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    position: relative;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ==============================================================================
+   Toast Auto-Dismiss Linear Progress Bar (Ported from EduBridge)
+   ============================================================================== */
+[data-sonner-toast][data-styled='true'] [data-content]::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: currentColor;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+[data-sonner-toast][data-styled='true'] [data-content]::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: currentColor;
+  opacity: 0.65;
+  transform-origin: left;
+  animation: sonner-progress var(--toast-duration, 4000ms) linear forwards;
+  pointer-events: none;
+}
+
+[data-sonner-toast]:hover [data-content]::after,
+[data-sonner-toaster]:hover [data-sonner-toast] [data-content]::after {
+  animation-play-state: paused;
+}
+
+[data-sonner-toast][data-type='loading'] [data-content]::before,
+[data-sonner-toast][data-type='loading'] [data-content]::after,
+[data-sonner-toast][data-promise='true'] [data-content]::before,
+[data-sonner-toast][data-promise='true'] [data-content]::after {
+  display: none !important;
+}
+
+@keyframes sonner-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Toast Close Button */
+[data-sonner-toast][data-styled='true'] [data-close-button] {
+  left: auto !important;
+  right: 12px !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  border: none !important;
+  background: transparent !important;
+  color: currentColor !important;
+  opacity: 0.6 !important;
+  border-radius: 4px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: opacity 150ms ease, background-color 150ms ease !important;
+}
+
+[data-sonner-toast][data-styled='true']:hover [data-close-button]:hover,
+[data-sonner-toast][data-styled='true'] [data-close-button]:hover {
+  opacity: 1 !important;
+  background-color: currentColor;
+  border-color: transparent !important;
+}
+
+/* ==============================================================================
+   Google 3-Dot Circular Thinking Animation (Ported from EduBridge)
+   ============================================================================== */
+@keyframes google-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes google-dot-chase {
+  0%, 100% {
+    transform: scale(0.65);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+.google-thinking-spinner {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: google-orbit 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.google-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.65);
+  animation: google-dot-chase 1.1s ease-in-out infinite;
+}
+
+.google-dot-1 {
+  top: 0;
+  left: calc(50% - 2.5px);
+  animation-delay: 0s;
+}
+
+.google-dot-2 {
+  bottom: 1px;
+  right: 0.5px;
+  animation-delay: -0.37s;
+}
+
+.google-dot-3 {
+  bottom: 1px;
+  left: 0.5px;
+  animation-delay: -0.74s;
+}
+
+/* ==============================================================================
+   Mobile & Touch Utilities
+   ============================================================================== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
