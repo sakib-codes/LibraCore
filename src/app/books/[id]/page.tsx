@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Loader2,
   Check,
+  FolderPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
 import { FileTypeBadge } from "@/components/shared/status-badge";
 import { BookPreviewReader } from "@/components/shared/book-preview-reader";
 import { BookAiPanel } from "@/components/shared/book-ai-panel";
+import { AddToCollectionDialog } from "@/components/shared/add-to-collection-dialog";
 import { formatBytes, formatDuration } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,6 +169,7 @@ export default function BookDetailPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [downloadCount, setDownloadCount] = useState(book.download_count);
   const [downloading, setDownloading] = useState(false);
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
 
   // Fetch book from Supabase
   useEffect(() => {
@@ -403,6 +406,16 @@ export default function BookDetailPage() {
 
                   <Button
                     variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs font-semibold shadow-2xs hover:bg-muted"
+                    onClick={() => setCollectionDialogOpen(true)}
+                  >
+                    <FolderPlus className="h-3.5 w-3.5 text-indigo-500" />
+                    Add to Collection
+                  </Button>
+
+                  <Button
+                    variant="outline"
                     size="icon"
                     className="h-8 w-8 rounded-lg shadow-2xs"
                     onClick={handleShare}
@@ -440,6 +453,17 @@ export default function BookDetailPage() {
           />
         </div>
       </div>
+
+      {/* Add To Collection Modal */}
+      {collectionDialogOpen && (
+        <AddToCollectionDialog
+          open={collectionDialogOpen}
+          onOpenChange={setCollectionDialogOpen}
+          bookId={book.id}
+          bookTitle={book.title}
+          userId={user?.id || "demo"}
+        />
+      )}
     </div>
   );
 }

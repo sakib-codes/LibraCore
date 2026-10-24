@@ -27,3 +27,11 @@ After completing every component, migration, or route update, run these three ve
 - **Do Not Pause for Human Input:** Resolve all technical blockers autonomously.
 - **Auto-Generate Missing UI:** If a roadmap feature requires new UI primitives (e.g., `command.tsx` for the `⌘K` palette, pagination, or annotation drawers), generate them via the **Google Stitch MCP** tool or construct them cleanly using `@radix-ui/*` and `lucide-react`.
 - **Keep `MEMORY.md` & `TASKS.md` Updated:** Whenever you finish a roadmap module or fix a new bug, log it in `MEMORY.md` and check it off in `TASKS.md`.
+
+---
+
+## 5. Active Task Claiming Protocol & State Tracking
+To prevent duplicate work or conflicts when multiple agents or automated sessions run:
+1. **Mandatory Task Claiming:** Whenever an agent picks up a task or milestone, it **MUST IMMEDIATELY** mark that item in `TASKS.md` as `[🔄 IN PROGRESS - Agent Active]` before writing any code.
+2. **Memory Lock Update:** Update the "Active Working Lock" section in `MEMORY.md` with the current claimed milestone and active timestamp.
+3. **Task Completion Handoff:** Once the milestone is implemented and verified through the 3-step verification loop (`tsc`, `lint`, `build`), change `[🔄 IN PROGRESS - Agent Active]` to `[x]` in `TASKS.md`, update `MEMORY.md` feature status to `✅ 100% Working`, and clear the lock.

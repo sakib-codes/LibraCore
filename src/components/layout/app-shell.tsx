@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { ChatWidget } from "@/components/layout/chat-widget";
+import { CommandMenu } from "@/components/shared/command-menu";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -46,6 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </footer>
 
       <ChatWidget />
+      <CommandMenu />
     </div>
   );
 }

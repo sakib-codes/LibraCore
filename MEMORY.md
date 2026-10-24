@@ -10,6 +10,14 @@
 
 ---
 
+## 🔒 ACTIVE WORKING LOCK (Multi-Agent State)
+- **Last Completed Module:** Priority 2 / Milestone 11 — **Persistent Custom Research Collections Engine (`/dashboard` & `/books/[id]`)**
+- **Status:** `[✅ 100% COMPLETE & VERIFIED]` (0 TS errors, 0 ESLint warnings, Next.js build clean)
+- **Next Unclaimed Priority in Queue:** Priority 1 / Milestone 9 — **Interactive Global Command Palette (`⌘K` / `Ctrl+K` Spotlight Search Dialog)**
+- **Lock State:** `[🟢 UNLOCKED - Ready for Next Task Claim]`
+
+---
+
 ## 🏛️ 1. System Overview & Technology Stack
 
 - **Project Name:** LibraCore / LibrisAI (Intelligent Digital Library Management System)
@@ -94,9 +102,13 @@
     - **Taxonomy CRUD:** Adds, edits, and removes categories in `categories` table.
     - **Readers & Accounts:** Synchronized table of users from `profiles` table with role and suspension status badges.
 
-11. **Scholar Workspace & Dashboard (`src/app/dashboard/page.tsx`):**
-    - Interactive Tab navigation:
-      - `?tab=saved`: Pinned saved research resources grid with quick read/download and remove bookmark actions.
+11. **Scholar Workspace & Research Collections Engine (`src/app/dashboard/page.tsx` & `/books/[id]`):**
+    - **Thematic Research Collections Filter Rail:** Dynamic pill navigation with count badges (`All Saved Resources`, custom user collections with color dots).
+    - **Collections Management (`ManageCollectionsDialog`):** Interactive modal allowing scholars to inspect custom collections, color codes, book counts, and perform deletions.
+    - **Custom Collection Creation Modal:** Allows creating new themed research collections with title, optional notes/thesis scope, and 7 curated color badges (Indigo, Emerald, Amber, Rose, Cyan, Purple, Blue).
+    - **Multi-Collection Assignment (`AddToCollectionDialog`):** Interactive checkboxes available on every monograph card in `/dashboard` and in the action bar of `/books/[id]`.
+    - **Database & Data Layer (`src/lib/collections.ts`):** Full Supabase persistence (`collections`, `collection_books`) with graceful offline/local fallback.
+    - **Download Audit & Profile:**
       - `?tab=history`: Complete audit log of downloaded monographs with sorting, pagination, and CSV Export.
       - `?tab=profile`: Interactive Scholar Profile editor allowing updates to Full Name, Academic Specialization / Bio, and Office Phone, syncing to Supabase `profiles` table.
       - `?tab=overview`: Complete full workspace view.

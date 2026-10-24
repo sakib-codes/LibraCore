@@ -102,23 +102,23 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Global Academic Search Bar (Mockup Image 2, 3, 4) */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className="hidden md:flex items-center relative flex-1 max-w-md xl:max-w-lg mx-2"
+        {/* Global Academic Search Bar (Mockup Image 2, 3, 4) - Triggers ⌘K Spotlight */}
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("open-libris-command-palette"));
+          }}
+          className="hidden md:flex items-center relative flex-1 max-w-md xl:max-w-lg mx-2 text-left cursor-pointer group"
+          title="Open Spotlight Search (⌘K / Ctrl+K)"
         >
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search academic catalog, ISBN, DOI, or author..."
-            value={navSearch}
-            onChange={(e) => setNavSearch(e.target.value)}
-            className="h-9 w-full rounded-xl bg-muted/50 border-border/70 pl-9 pr-14 text-xs focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary shadow-2xs transition-all"
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded border border-border/80 bg-background/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground pointer-events-none">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+          <div className="h-9 w-full rounded-xl bg-muted/50 border border-border/70 pl-9 pr-14 text-xs text-muted-foreground flex items-center shadow-2xs group-hover:bg-background group-hover:border-primary/50 group-hover:shadow-xs transition-all select-none">
+            <span>Search academic catalog, ISBN, DOI, or author...</span>
+          </div>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded border border-border/80 bg-background/80 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground group-hover:border-primary/40 group-hover:text-primary transition-colors">
             <span>⌘K</span>
           </div>
-        </form>
+        </button>
 
         {/* Right Action Icons & Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -230,6 +230,17 @@ export function Navbar() {
               </Button>
             </div>
           )}
+
+          {/* Mobile Spotlight Search Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-9 w-9 text-muted-foreground hover:text-foreground"
+            title="Open Search Palette (⌘K)"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-libris-command-palette"))}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
 
           {/* Mobile Hamburger Menu */}
           <div className="lg:hidden">

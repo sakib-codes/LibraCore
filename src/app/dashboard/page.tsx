@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -30,6 +30,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Share2,
+  FolderPlus,
+  FolderKanban,
+  FolderCheck,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RoleLayout } from "@/components/layout/role-layout";
@@ -58,6 +62,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  fetchUserCollections,
+  createUserCollection,
+  COLLECTION_COLORS,
+  type CollectionWithCount,
+} from "@/lib/collections";
+import type { CollectionColor } from "@/integrations/supabase/types";
+import { AddToCollectionDialog } from "@/components/shared/add-to-collection-dialog";
+import { ManageCollectionsDialog } from "@/components/shared/manage-collections-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Book, Category, FileType } from "@/integrations/supabase/types";
@@ -232,6 +245,27 @@ function StudentDashboardContent() {
   const [sortBy, setSortBy] = useState("recent");
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
+  const [newColDesc, setNewColDesc] = useState("");
+  const [newColColor, setNewColColor] = useState<CollectionColor>("indigo");
+  const [creatingCollection, setCreatingCollection] = useState(false);
+  const [collections, setCollections] = useState<CollectionWithCount[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>("all");
+  const [manageCollectionsOpen, setManageCollectionsOpen] = useState(false);
+  const [targetBookForCollection, setTargetBookForCollection] = useState<{ id: string; title: string } | null>(null);
+
+  const loadCollections = useCallback(async () => {
+    const userId = user?.id || "demo";
+    try {
+      const data = await fetchUserCollections(userId);
+      setCollections(data);
+    } catch (e) {
+      console.warn("Could not load user collections:", e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadCollections();
+  }, [loadCollections]);
 
   const [profileName, setProfileName] = useState(profile?.full_name || profile?.name || "");
   const [profileBio, setProfileBio] = useState(profile?.bio || "");
@@ -366,13 +400,48 @@ function StudentDashboardContent() {
     toast.success("Download history exported as CSV successfully!");
   };
 
-  const handleCreateCollection = (e: React.FormEvent) => {
+  const handleCreateCollection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCollectionName.trim()) return;
-    toast.success(`Collection "${newCollectionName.trim()}" created!`);
-    setNewCollectionName("");
-    setCollectionModalOpen(false);
+    try {
+      setCreatingCollection(true);
+      const userId = user?.id || "demo";
+      await createUserCollection(userId, {
+        name: newCollectionName.trim(),
+        description: newColDesc.trim(),
+        color: newColColor,
+      });
+      await loadCollections();
+      toast.success(`Research collection "${newCollectionName.trim()}" created!`);
+      setNewCollectionName("");
+      setNewColDesc("");
+      setNewColColor("indigo");
+      setCollectionModalOpen(false);
+    } catch (err: any) {
+      console.warn("Could not create collection:", err);
+      toast.error("Could not create collection. Please try again.");
+    } finally {
+      setCreatingCollection(false);
+    }
   };
+
+  const filteredAndSortedBooks = (() => {
+    let list = savedBooks;
+    if (selectedCollectionId !== "all") {
+      const selectedCol = collections.find((c) => c.id === selectedCollectionId);
+      if (selectedCol) {
+        list = list.filter((b) => selectedCol.book_ids.includes(b.id));
+      }
+    }
+
+    const sorted = [...list];
+    if (sortBy === "title") {
+      sorted.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === "downloads") {
+      sorted.sort((a, b) => (b.download_count || 0) - (a.download_count || 0));
+    }
+    return sorted;
+  })();
 
   return (
     <RoleLayout allow="user">
@@ -547,79 +616,205 @@ function StudentDashboardContent() {
                 </div>
               </div>
 
-              {savedBooks.length > 0 ? (
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
-                  {savedBooks.map((book) => (
-                    <div
-                      key={book.id}
-                      className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+              {/* Thematic Collections Navigation Rail */}
+              <div className="rounded-2xl border border-border/80 bg-card p-3 sm:p-4 shadow-2xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FolderKanban className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Thematic Research Collections
+                    </span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
+                      {collections.length} Folders
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs font-semibold gap-1.5 text-muted-foreground hover:text-foreground"
+                      onClick={() => setManageCollectionsOpen(true)}
                     >
-                      <div>
-                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
-                          <img
-                            src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
-                            alt={book.title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute top-2.5 right-2.5">
-                            <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
-                              {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
-                            </span>
+                      <FolderOpen className="h-3.5 w-3.5" /> Manage Collections
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs font-semibold gap-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                      onClick={() => setCollectionModalOpen(true)}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> New
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCollectionId("all")}
+                    className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap border ${
+                      selectedCollectionId === "all"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border-border/70"
+                    }`}
+                  >
+                    <span>All Saved Resources</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
+                        selectedCollectionId === "all"
+                          ? "bg-primary-foreground/20 text-primary-foreground font-bold"
+                          : "bg-background text-muted-foreground"
+                      }`}
+                    >
+                      {savedBooks.length}
+                    </span>
+                  </button>
+
+                  {collections.map((col) => {
+                    const colorMeta = COLLECTION_COLORS[col.color as CollectionColor] || COLLECTION_COLORS.indigo;
+                    const isSelected = selectedCollectionId === col.id;
+                    return (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => setSelectedCollectionId(col.id)}
+                        className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap border ${
+                          isSelected
+                            ? "bg-card text-foreground border-primary shadow-xs ring-1 ring-primary/40 font-bold"
+                            : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border-border/70"
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${colorMeta.dotClass}`} />
+                        <span className="max-w-[180px] truncate">{col.name}</span>
+                        <span
+                          className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
+                            isSelected
+                              ? "bg-primary/15 text-primary font-bold"
+                              : "bg-background text-muted-foreground"
+                          }`}
+                        >
+                          {col.book_count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {filteredAndSortedBooks.length > 0 ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
+                  {filteredAndSortedBooks.map((book) => {
+                    const bookCollections = collections.filter((c) => c.book_ids.includes(book.id));
+                    return (
+                      <div
+                        key={book.id}
+                        className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                      >
+                        <div>
+                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
+                            <img
+                              src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
+                              alt={book.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute top-2.5 right-2.5">
+                              <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
+                                {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-3.5 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
+                                {book.categories?.name || "Cryptography"}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">
+                                • {book.published_year || "2024"} Edition
+                              </span>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                              <Link href={`/books/${book.id}`}>{book.title}</Link>
+                            </h3>
+
+                            <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
+                              {book.author}
+                            </p>
+
+                            {/* Assigned Collection Badges */}
+                            {bookCollections.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {bookCollections.map((col) => {
+                                  const colorMeta = COLLECTION_COLORS[col.color as CollectionColor] || COLLECTION_COLORS.indigo;
+                                  return (
+                                    <span
+                                      key={col.id}
+                                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold border ${colorMeta.badgeClass}`}
+                                    >
+                                      <span className={`h-1.5 w-1.5 rounded-full ${colorMeta.dotClass}`} />
+                                      <span className="max-w-[120px] truncate">{col.name}</span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="mt-3.5 space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
-                              {book.categories?.name || "Cryptography"}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground">
-                              • {book.published_year || "2024"} Edition
-                            </span>
-                          </div>
-
-                          <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
-                            <Link href={`/books/${book.id}`}>{book.title}</Link>
-                          </h3>
-
-                          <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
-                            {book.author}
-                          </p>
+                        <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
+                          <Button
+                            asChild
+                            size="sm"
+                            className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
+                          >
+                            <Link href={`/books/${book.id}`}>
+                              <Eye className="h-3.5 w-3.5" /> Read / Download
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+                            title="Add to Research Collection"
+                            onClick={() => setTargetBookForCollection({ id: book.id, title: book.title })}
+                          >
+                            <FolderPlus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                            title="Remove Bookmark"
+                            onClick={() => handleRemoveBookmark(book.id)}
+                          >
+                            <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
-                        <Button
-                          asChild
-                          size="sm"
-                          className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
-                        >
-                          <Link href={`/books/${book.id}`}>
-                            <Eye className="h-3.5 w-3.5" /> Read / Download
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                          title="Remove Bookmark"
-                          onClick={() => handleRemoveBookmark(book.id)}
-                        >
-                          <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <EmptyState
                   icon={Bookmark}
-                  title="Your saved research workspace is empty"
-                  description="Explore the academic repository and bookmark monographs to build your active literature index."
+                  title={selectedCollectionId === "all" ? "Your saved research workspace is empty" : "No monographs in this collection"}
+                  description={
+                    selectedCollectionId === "all"
+                      ? "Explore the academic repository and bookmark monographs to build your active literature index."
+                      : "No books have been assigned to this research collection yet. Use the '+' button on any monograph card to organize your research."
+                  }
                   action={
-                    <Button asChild size="sm">
-                      <Link href="/">Explore Catalog</Link>
-                    </Button>
+                    selectedCollectionId === "all" ? (
+                      <Button asChild size="sm">
+                        <Link href="/">Explore Catalog</Link>
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setSelectedCollectionId("all")}>
+                        View All Saved Resources
+                      </Button>
+                    )
                   }
                 />
               )}
@@ -856,67 +1051,97 @@ function StudentDashboardContent() {
 
               {savedBooks.length > 0 ? (
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
-                  {savedBooks.map((book) => (
-                    <div
-                      key={book.id}
-                      className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
-                    >
-                      <div>
-                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
-                          <img
-                            src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
-                            alt={book.title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <div className="absolute top-2.5 right-2.5">
-                            <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
-                              {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
-                            </span>
+                  {savedBooks.map((book) => {
+                    const bookCollections = collections.filter((c) => c.book_ids.includes(book.id));
+                    return (
+                      <div
+                        key={book.id}
+                        className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                      >
+                        <div>
+                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
+                            <img
+                              src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
+                              alt={book.title}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute top-2.5 right-2.5">
+                              <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
+                                {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-3.5 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
+                                {book.categories?.name || "Cryptography"}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">
+                                • {book.published_year || "2024"} Edition
+                              </span>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                              <Link href={`/books/${book.id}`}>{book.title}</Link>
+                            </h3>
+
+                            <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
+                              {book.author}
+                            </p>
+
+                            {/* Assigned Collection Badges */}
+                            {bookCollections.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {bookCollections.map((col) => {
+                                  const colorMeta = COLLECTION_COLORS[col.color as CollectionColor] || COLLECTION_COLORS.indigo;
+                                  return (
+                                    <span
+                                      key={col.id}
+                                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold border ${colorMeta.badgeClass}`}
+                                    >
+                                      <span className={`h-1.5 w-1.5 rounded-full ${colorMeta.dotClass}`} />
+                                      <span className="max-w-[120px] truncate">{col.name}</span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="mt-3.5 space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
-                              {book.categories?.name || "Cryptography"}
-                            </Badge>
-                            <span className="text-[10px] text-muted-foreground">
-                              • {book.published_year || "2024"} Edition
-                            </span>
-                          </div>
-
-                          <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
-                            <Link href={`/books/${book.id}`}>{book.title}</Link>
-                          </h3>
-
-                          <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
-                            {book.author}
-                          </p>
+                        <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
+                          <Button
+                            asChild
+                            size="sm"
+                            className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
+                          >
+                            <Link href={`/books/${book.id}`}>
+                              <Eye className="h-3.5 w-3.5" /> Read / Download
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+                            title="Add to Research Collection"
+                            onClick={() => setTargetBookForCollection({ id: book.id, title: book.title })}
+                          >
+                            <FolderPlus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                            title="Remove Bookmark"
+                            onClick={() => handleRemoveBookmark(book.id)}
+                          >
+                            <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
-                        <Button
-                          asChild
-                          size="sm"
-                          className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
-                        >
-                          <Link href={`/books/${book.id}`}>
-                            <Eye className="h-3.5 w-3.5" /> Read / Download
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                          title="Remove Bookmark"
-                          onClick={() => handleRemoveBookmark(book.id)}
-                        >
-                          <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <EmptyState
@@ -1031,14 +1256,19 @@ function StudentDashboardContent() {
         <Dialog open={collectionModalOpen} onOpenChange={setCollectionModalOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold">Create Research Collection</DialogTitle>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <FolderPlus className="h-4 w-4 text-primary" />
+                Create Research Collection
+              </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 Group related academic monographs and journal papers into a dedicated research collection.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateCollection} className="space-y-4 py-2">
               <div className="space-y-1.5">
-                <Label htmlFor="col-name" className="text-xs font-semibold">Collection Name</Label>
+                <Label htmlFor="col-name" className="text-xs font-semibold">
+                  Collection Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="col-name"
                   placeholder="e.g. Post-Quantum Lattice Cryptography"
@@ -1048,17 +1278,89 @@ function StudentDashboardContent() {
                   required
                 />
               </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="col-desc" className="text-xs font-semibold">
+                  Description / Thesis Notes
+                </Label>
+                <Input
+                  id="col-desc"
+                  placeholder="Optional notes or subject scope for this collection"
+                  value={newColDesc}
+                  onChange={(e) => setNewColDesc(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Collection Theme Color</Label>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  {(Object.keys(COLLECTION_COLORS) as CollectionColor[]).map((cKey) => {
+                    const cMeta = COLLECTION_COLORS[cKey];
+                    const isSelected = newColColor === cKey;
+                    return (
+                      <button
+                        key={cKey}
+                        type="button"
+                        onClick={() => setNewColColor(cKey)}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-[10px] font-medium transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/10 shadow-2xs ring-2 ring-primary/40 font-bold"
+                            : "border-border/70 hover:bg-muted/60"
+                        }`}
+                      >
+                        <span className={`h-3 w-3 rounded-full ${cMeta.dotClass}`} />
+                        <span className="capitalize">{cMeta.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <DialogFooter className="gap-2 sm:gap-0 pt-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setCollectionModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" className="bg-primary text-primary-foreground font-semibold">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={creatingCollection}
+                  className="bg-primary text-primary-foreground font-semibold gap-1.5"
+                >
+                  {creatingCollection ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                   Create Collection
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Modal: Manage Collections */}
+        <ManageCollectionsDialog
+          open={manageCollectionsOpen}
+          onOpenChange={setManageCollectionsOpen}
+          collections={collections}
+          userId={user?.id || "demo"}
+          onCollectionsChange={loadCollections}
+          onCreateClick={() => {
+            setManageCollectionsOpen(false);
+            setCollectionModalOpen(true);
+          }}
+        />
+
+        {/* Modal: Add to Collection */}
+        {targetBookForCollection && (
+          <AddToCollectionDialog
+            open={!!targetBookForCollection}
+            onOpenChange={(open) => {
+              if (!open) setTargetBookForCollection(null);
+            }}
+            bookId={targetBookForCollection.id}
+            bookTitle={targetBookForCollection.title}
+            userId={user?.id || "demo"}
+            onCollectionsUpdated={loadCollections}
+          />
+        )}
       </div>
     </RoleLayout>
   );

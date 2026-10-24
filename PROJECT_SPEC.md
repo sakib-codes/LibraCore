@@ -1,101 +1,52 @@
-# PROJECT_SPEC.md — LibraCore Functional & Backend Specification
+# PROJECT_SPEC.md — LibraCore Core & Roadmap Specification
 
-## 1. Executive Summary & Objectives
-LibraCore is a production Digital Library Management System (DLMS) providing 24/7 online access to books, research papers, academic materials, audio, and media files.
-- **Core Goals:**
-  1. Provide a fast, user-friendly platform for accessing digital books and documents.
-  2. Allow students and researchers to register, log in, search, preview in-browser, bookmark, and download resources easily.
-  3. Provide administrators with a complete dashboard to upload, edit, categorize, and delete resources, manage users, and track downloads.
-  4. Integrate Google Gemini AI for catalog discovery, book-specific Q&A, and automated book description generation.
+## 1. Core Architecture (100% Operational — Do Not Break)
+- **Framework:** Next.js 15 (App Router, TypeScript) deployed via `@opennextjs/cloudflare`[cite: 7].
+- **Database & Storage:** Supabase PostgreSQL (`profiles`, `categories`, `books`, `downloads`, `saved_books`) + Storage Buckets (`library-files`, `book-covers`)[cite: 3, 7].
+- **AI Engine:** Google AI Studio REST API (`gemini-3.5-flash`) powering `/api/ai` (`book-qa`, `generate_description`) and `/api/chatbot`[cite: 7].
 
 ---
 
-## 2. Database Schema & Supabase Scope (`public` schema)
-Defined in `supabase/migrations/20261024000000_init_digital_library_schema.sql` and typed in `src/integrations/supabase/types.ts`:
+## 2. Specifications for Next Roadmap Modules (From `MEMORY.md`)
 
-1. **`profiles` (Users Table)**
-   - `id`: `uuid` (PK, references `auth.users(id)` on delete cascade)
-   - `name`: `text`
-   - `email`: `text` (Unique)
-   - `role`: `text` (`'user'` | `'admin'`, default `'user'`)
-   - `is_suspended`: `boolean` (default `false`)
-   - `created_at`: `timestamptz`
+### Module 1: Global Command Palette (`⌘K` / `Ctrl+K` Dialog)
+- **Component:** `src/components/layout/command-palette.tsx` + `src/components/ui/command.tsx`.
+- **Triggers:**
+  1. Pressing `Cmd+K` (macOS) or `Ctrl+K` (Windows/Linux) anywhere in the app.
+  2. Clicking the search bar / `⌘K` pill in `src/components/layout/navbar.tsx`[cite: 7].
+- **Capabilities:**
+  - **Live Book Search:** Instant search across `books` (title, author, format badge) -> clicking navigates to `/books/[id]`[cite: 2, 7].
+  - **Category Jump:** Quick filter jump to `/catalog?category=[id]`[cite: 2, 7].
+  - **Quick Navigation:** Jump to `/dashboard`, `/catalog`, `/categories`, `/admin` (if admin), or trigger "Ask AI Librarian" drawer (`chat-widget.tsx`)[cite: 7].
 
-2. **`categories`**
-   - `id`: `uuid` (PK, default `gen_random_uuid()`)
-   - `name`: `text` (Unique, Not Null)
-   - `created_at`: `timestamptz`
+### Module 2: Persistent User Collections & Reading Lists
+- **Database Migration (`supabase/migrations/20261025000000_add_collections_and_profile_fields.sql`):**
+  1. **`collections` Table:**
+     - `id`: `uuid` (PK, default `gen_random_uuid()`)
+     - `user_id`: `uuid` (FK -> `profiles(id)` on delete cascade, not null)
+     - `name`: `text` (Not Null)
+     - `description`: `text`
+     - `color`: `text` (default `'indigo'`)
+     - `created_at`: `timestamptz` (default `now()`)
+  2. **`collection_books` Join Table:**
+     - `id`: `uuid` (PK, default `gen_random_uuid()`)
+     - `collection_id`: `uuid` (FK -> `collections(id)` on delete cascade)
+     - `book_id`: `uuid` (FK -> `books(id)` on delete cascade)
+     - `added_at`: `timestamptz` (default `now()`)
+     - Constraint: `UNIQUE(collection_id, book_id)`
+  3. **RLS Policies:** Authenticated users can `SELECT`, `INSERT`, `UPDATE`, and `DELETE` their own `collections` and `collection_books`.
+- **Frontend Wiring (`/dashboard` & `/books/[id]`):**
+  - Replace local-state collections in `src/app/dashboard/page.tsx` with real Supabase queries to `collections` and `collection_books`[cite: 7].
+  - Allow users to create/delete custom collections (e.g., "Thesis Research", "Lattice Cryptography"), assign saved books to collections, and filter their workspace by collection tag.
 
-3. **`books`**
-   - `id`: `uuid` (PK, default `gen_random_uuid()`)
-   - `title`: `text` (Not Null)
-   - `author`: `text` (Not Null)
-   - `description`: `text`
-   - `file_url`: `text` (Not Null — Supabase Storage URL)
-   - `cover_url`: `text` (Supabase Storage URL)
-   - `file_type`: `text` (`'pdf'` | `'epub'` | `'audio'` | `'image'` | `'doc'`, default `'pdf'`)
-   - `category_id`: `uuid` (FK -> `categories(id)` on delete set null)
-   - `created_at`: `timestamptz`
+### Module 3: Enhanced PDF Manuscript Streamer & Page Annotations (`book-preview-reader.tsx`)
+- **Features in `src/components/shared/book-preview-reader.tsx`[cite: 7]:**
+  - Add a collapsible **Page Thumbnail / Outline & Bookmarks Sidebar** next to the document reader.
+  - Allow users to bookmark specific page numbers with a short research note (persisted in `localStorage` or a `book_annotations` table synced to `user_id` + `book_id` + `page_number`).
+  - Smooth zoom controls (`50%` to `200%`), page jump input, fullscreen reader mode, and one-click BibTeX / APA citation copy.
 
-4. **`downloads`**
-   - `id`: `uuid` (PK, default `gen_random_uuid()`)
-   - `user_id`: `uuid` (FK -> `profiles(id)` on delete cascade)
-   - `book_id`: `uuid` (FK -> `books(id)` on delete cascade)
-   - `time`: `timestamptz` (default `now()`)
-
-5. **`saved_books` (User Bookmarks)**
-   - `id`: `uuid` (PK, default `gen_random_uuid()`)
-   - `user_id`: `uuid` (FK -> `profiles(id)` on delete cascade)
-   - `book_id`: `uuid` (FK -> `books(id)` on delete cascade)
-   - `created_at`: `timestamptz` (default `now()`)
-   - Constraint: `UNIQUE(user_id, book_id)`
-
-### Supabase Storage Buckets
-- **`library-files`:** Stores uploaded PDFs, eBooks, audio files, images, and text documents.
-- **`book-covers`:** Stores uploaded cover image thumbnails.
-
----
-
-## 3. Feature Requirements by Route
-
-### A. Authentication (`/login`, `/register`, `/reset-password`)
-- **Login (`/login`):** Email + Password login via `supabase.auth.signInWithPassword` and Google OAuth (`signInWithOAuth`). Redirects suspended users (`is_suspended === true`) with an error toast.
-- **Register (`/register`):** Full Name, Email, Password registration via `supabase.auth.signUp` passing `{ data: { name } }` so the DB trigger populates `profiles`.
-- **Reset Password (`/reset-password`):** Sends password reset link via `supabase.auth.resetPasswordForEmail` and handles password update when returning with a recovery session.
-
-### B. Public Catalog & Discovery (`/`, `/catalog`, `/categories`)
-- Fetch books joined with categories: `supabase.from('books').select('*, categories(id, name)')`.
-- **Instant Search:** Filter books in real-time by `title` or `author` (case-insensitive).
-- **Category Filter Pills:** Filter the book grid by `category_id` or `file_type`.
-- **Book Card (`src/components/shared/book-card.tsx`):** Shows cover thumbnail, `file_type` badge, category badge, title, author, short description, bookmark toggle button, "Preview" link (`/books/[id]`), and direct "Download" button.
-
-### C. Book Detail, Reader & Contextual AI (`/books/[id]`)
-- Displays full book metadata and description so students can read the description before downloading.
-- **In-Browser Previewer (`src/components/shared/book-preview-reader.tsx`):**
-  - Renders `<iframe>` or `<embed>` for `'pdf'`, `<audio controls>` for `'audio'`, `<img>` for `'image'`, and a clean document viewer/download fallback for `'epub'` and `'doc'`.
-- **Download Tracking:** Clicking "Download" records an entry in `public.downloads` (`user_id`, `book_id`) if authenticated, and triggers the browser download of `file_url`.
-- **Bookmark Toggle:** Inserts or deletes from `public.saved_books` and updates UI state immediately with a `sonner` toast.
-- **Ask AI About This Book (`src/components/shared/book-ai-panel.tsx`):** Side panel chat that sends `{ action: 'book_qa', bookTitle, bookAuthor, bookDescription, message, history }` to `/api/ai`.
-
-### D. Student Dashboard (`/dashboard`)
-- Protected route (requires logged-in user).
-- **KPI Cards:** Total Saved Books count, Total Downloads count, Categories Explored count.
-- **Saved Resources Grid:** Lists all books from `saved_books` joined with `books(*, categories(*))`, allowing one-click read/download or bookmark removal.
-- **Recent Downloads Table:** Lists the user's download history from `downloads` joined with `books(title, author, file_type, file_url, categories(name))` ordered by `time DESC`.
-
-### E. Admin Dashboard (`/admin`)
-- Protected route (requires `profile.role === 'admin'`).
-- **Top KPI Row:** Total Registered Users (`profiles` count), Total Books (`books` count), Total Categories (`categories` count), Total Downloads (`downloads` count).
-- **Tab 1 — Manage Books (CRUD):**
-  - Searchable table of all books with Edit and Delete actions (`confirm-modal.tsx`).
-  - "Upload / Edit Book" Dialog Modal: Uploads file to `library-files` bucket and cover to `book-covers` bucket, then inserts/updates `public.books`.
-  - Includes **"✨ Auto-Generate Description with AI"** button that calls `/api/ai` with `{ action: 'generate_description', title, author, category }` and populates the description textarea.
-- **Tab 2 — Manage Categories (CRUD):**
-  - Add new category, edit category name, delete category.
-- **Tab 3 — Manage Users:**
-  - Table of all `profiles` showing Name, Email, Role (`user`/`admin`), Status (`Active`/`Suspended`), and actions to toggle role or suspend/unsuspend accounts.
-
-### F. Gemini AI Endpoints (`/api/ai` & `/api/chatbot`)
-- Environment Variable: `GEMINI_API_KEY` (using model `gemini-2.5-flash`).
-- **`/api/chatbot/route.ts`:** Global AI Librarian widget (`src/components/layout/chat-widget.tsx`). Fetches current catalog titles/authors/IDs from Supabase and injects them into the system prompt so Gemini recommends real library books with clickable links (`/books/[id]`).
-- **`/api/ai/route.ts`:** Handles `book_qa` (answering questions about a specific book) and `generate_description` (generating a 3-sentence academic summary for admins).
+### Module 4: User Profile & Institutional Verification Settings (`/dashboard?tab=profile`)
+- **Database Columns (Add to `profiles` table via migration):**
+  - `avatar_url` (`text`), `bio` (`text`), `institution` (`text`), `department` (`text`).
+- **Frontend Wiring (`src/app/dashboard/page.tsx` or `src/components/shared/profile-settings.tsx`):**
+  - Complete the `/dashboard?tab=profile` subview allowing scholars to update their Name, Avatar URL, Bio, Affiliated University/Department, and update their password via `supabase.auth.updateUser({ password })`.

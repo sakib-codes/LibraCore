@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Bookmark, Download, Clock, Sparkles } from "lucide-react";
+import { BookOpen, Bookmark, Download, Clock, Sparkles, FolderPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileTypeBadge } from "@/components/shared/status-badge";
@@ -13,9 +13,10 @@ export interface BookCardProps {
   book: Book & { categories?: Category | null };
   isSaved?: boolean;
   onToggleSave?: (bookId: string) => void;
+  onAddToCollection?: (book: { id: string; title: string }) => void;
 }
 
-export function BookCard({ book, isSaved = false, onToggleSave }: BookCardProps) {
+export function BookCard({ book, isSaved = false, onToggleSave, onAddToCollection }: BookCardProps) {
   const categoryName = book.categories?.name || "General";
 
   return (
@@ -102,6 +103,20 @@ export function BookCard({ book, isSaved = false, onToggleSave }: BookCardProps)
               aria-label={isSaved ? "Remove bookmark" : "Bookmark this book"}
             >
               <Bookmark className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : ""}`} />
+            </Button>
+          )}
+
+          {onAddToCollection && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-primary"
+              onClick={() => onAddToCollection({ id: book.id, title: book.title })}
+              aria-label="Add to Research Collection"
+              title="Add to Collection"
+            >
+              <FolderPlus className="h-4 w-4" />
             </Button>
           )}
 

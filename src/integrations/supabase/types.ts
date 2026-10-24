@@ -252,6 +252,65 @@ export interface Database {
           },
         ];
       };
+      collections: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string | null;
+          color: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          description?: string | null;
+          color?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          description?: string | null;
+          color?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      collection_books: {
+        Row: {
+          id: string;
+          collection_id: string;
+          book_id: string;
+          added_at: string;
+        };
+        Insert: {
+          id?: string;
+          collection_id: string;
+          book_id: string;
+          added_at?: string;
+        };
+        Update: {
+          id?: string;
+          collection_id?: string;
+          book_id?: string;
+          added_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "collection_books_collection_id_fkey";
+            columns: ["collection_id"];
+            isOneToOne: false;
+            referencedRelation: "collections";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -277,6 +336,9 @@ export type Category = Database["public"]["Tables"]["categories"]["Row"];
 export type Book = Database["public"]["Tables"]["books"]["Row"];
 export type SavedBook = Database["public"]["Tables"]["saved_books"]["Row"];
 export type Download = Database["public"]["Tables"]["downloads"]["Row"];
+export type Collection = Database["public"]["Tables"]["collections"]["Row"];
+export type CollectionBook = Database["public"]["Tables"]["collection_books"]["Row"];
+export type CollectionColor = "indigo" | "emerald" | "amber" | "rose" | "cyan" | "purple" | "blue";
 
 export type BookWithCategory = Book & {
   categories?: Category | null;
