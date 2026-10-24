@@ -20,6 +20,9 @@ import {
   Shield,
   Layers,
   CheckCircle2,
+  SlidersHorizontal,
+  X,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -29,6 +32,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookCard } from "@/components/shared/book-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
+import {
+  CatalogFilterModal,
+  FilterCriteria,
+  DEFAULT_FILTER_CRITERIA,
+} from "@/components/shared/catalog-filter-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Book, Category, FileType } from "@/integrations/supabase/types";
@@ -209,6 +217,10 @@ function CatalogHome() {
   const [selectedFormat, setSelectedFormat] = useState<string>("ALL");
   const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
 
+  // Milestone 12: Advanced Filter Criteria State
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>(DEFAULT_FILTER_CRITERIA);
+
   useEffect(() => {
     if (queryParam) {
       setSearchQuery(queryParam);
@@ -287,28 +299,81 @@ function CatalogHome() {
     }
   };
 
-  const filteredBooks = books.filter((book) => {
-    const q = searchQuery.toLowerCase().trim();
-    const matchesSearch =
-      !q ||
-      book.title.toLowerCase().includes(q) ||
-      book.author.toLowerCase().includes(q) ||
-      (book.description && book.description.toLowerCase().includes(q)) ||
-      (book.isbn && book.isbn.toLowerCase().includes(q));
+  const activeFiltersCount = [
+    filterCriteria.minYear > 2010 || filterCriteria.maxYear < 2026,
+    filterCriteria.accessTier !== "all",
+    filterCriteria.format !== "ALL",
+    filterCriteria.minRating > 0,
+    filterCriteria.sortBy !== "popular",
+  ].filter(Boolean).length;
 
-    const matchesCategory =
-      selectedCategory === "all" ||
-      book.category_id === selectedCategory ||
-      book.categories?.slug === selectedCategory;
+  const filteredBooks = books
+    .filter((book) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        book.title.toLowerCase().includes(q) ||
+        book.author.toLowerCase().includes(q) ||
+        (book.description && book.description.toLowerCase().includes(q)) ||
+        (book.isbn && book.isbn.toLowerCase().includes(q));
 
-    const matchesFormat =
-      selectedFormat === "ALL" || book.file_type === selectedFormat;
+      const matchesCategory =
+        selectedCategory === "all" ||
+        book.category_id === selectedCategory ||
+        book.categories?.slug === selectedCategory;
 
-    return matchesSearch && matchesCategory && matchesFormat;
-  });
+      const activeFmt = filterCriteria.format !== "ALL" ? filterCriteria.format : selectedFormat;
+      const matchesFormat = activeFmt === "ALL" || book.file_type === activeFmt;
+
+      const year = book.published_year || 2024;
+      const matchesYear = year >= filterCriteria.minYear && year <= filterCriteria.maxYear;
+
+      const matchesAccessTier =
+        filterCriteria.accessTier === "all" ||
+        (filterCriteria.accessTier === "open-access" && (book.file_type === "PDF" || book.is_featured)) ||
+        (filterCriteria.accessTier === "peer-reviewed" && (book.publisher?.toLowerCase().includes("press") || book.download_count > 5000));
+
+      const matchesRating =
+        filterCriteria.minRating === 0 ||
+        (filterCriteria.minRating <= 4.0) ||
+        (filterCriteria.minRating <= 4.5 && (book.download_count > 5000 || book.is_featured)) ||
+        (filterCriteria.minRating <= 4.8 && book.is_featured);
+
+      return matchesSearch && matchesCategory && matchesFormat && matchesYear && matchesAccessTier && matchesRating;
+    })
+    .sort((a, b) => {
+      if (filterCriteria.sortBy === "recent") {
+        return (b.published_year || 2024) - (a.published_year || 2024);
+      }
+      if (filterCriteria.sortBy === "citations") {
+        return (b.view_count || 0) - (a.view_count || 0);
+      }
+      if (filterCriteria.sortBy === "year") {
+        return (b.published_year || 0) - (a.published_year || 0);
+      }
+      return (b.download_count || 0) - (a.download_count || 0);
+    });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Live Academic Repository Network Status Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 px-5 rounded-2xl border border-border/80 bg-card/80 backdrop-blur-md shadow-2xs text-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="font-bold text-foreground tracking-tight">Institutional Repository Protocol</span>
+          <span className="text-border">|</span>
+          <span className="text-muted-foreground hidden md:inline">MIT • Oxford • Cambridge • Stanford Indexed Nodes</span>
+        </div>
+        <div className="flex items-center gap-3 text-muted-foreground font-mono text-[11px]">
+          <span>4,280,150 Digital Objects</span>
+          <span>•</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-bold">99.98% Protocol Uptime</span>
+        </div>
+      </div>
+
       {/* 2-Column Desktop Layout matching Image 5 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
         {/* Left Side Rail (Mockup Image 5: Repository Search & Active Collections) */}
@@ -338,18 +403,47 @@ function CatalogHome() {
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedFormat("PDF")}
+                onClick={() => {
+                  setSelectedFormat("PDF");
+                  setFilterCriteria((prev) => ({ ...prev, format: "PDF" }));
+                }}
                 className="rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 text-[11px] font-medium hover:bg-emerald-500/20 transition-colors"
               >
                 Open Access
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedFormat("AUDIO")}
+                onClick={() => {
+                  setSelectedFormat("AUDIO");
+                  setFilterCriteria((prev) => ({ ...prev, format: "AUDIO" }));
+                }}
                 className="rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-1 text-[11px] font-medium hover:bg-amber-500/20 transition-colors"
               >
                 Audio Lectures
               </button>
+            </div>
+
+            {/* Advanced Multi-Filter Trigger */}
+            <div className="pt-2 border-t border-border/60">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsFilterModalOpen(true)}
+                className="w-full h-8 text-xs font-semibold gap-1.5 justify-between border-dashed border-border/80 hover:border-primary/50 text-foreground"
+              >
+                <span className="flex items-center gap-1.5">
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+                  <span>Advanced Multi-Filter</span>
+                </span>
+                {activeFiltersCount > 0 ? (
+                  <Badge variant="secondary" className="h-5 px-1.5 bg-primary text-primary-foreground text-[10px] font-mono font-bold">
+                    {activeFiltersCount} Active
+                  </Badge>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground font-mono">Refine</span>
+                )}
+              </Button>
             </div>
           </div>
 
@@ -402,7 +496,7 @@ function CatalogHome() {
           {/* Featured Monograph Highlights Cards matching Image 5 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
             {/* Card 1: Foundations of Deep Generative Networks */}
-            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs card-hover-effect flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border-0">
@@ -423,14 +517,14 @@ function CatalogHome() {
                 <span className="text-muted-foreground font-medium truncate max-w-[170px]">
                   Dr. Aris Thorne • MIT Press
                 </span>
-                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs">
+                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90">
                   <Link href="/books/b-deep-gen">Access Record</Link>
                 </Button>
               </div>
             </div>
 
             {/* Card 2: Large Language Models in Scholarly Retrieval */}
-            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs card-hover-effect flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-bold border-0">
@@ -451,7 +545,7 @@ function CatalogHome() {
                 <span className="text-muted-foreground font-medium truncate max-w-[170px]">
                   Elena Rostova • Stanford Univ.
                 </span>
-                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs">
+                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90">
                   <Link href="/books/b-llm-retrieval">Access Record</Link>
                 </Button>
               </div>
@@ -459,8 +553,8 @@ function CatalogHome() {
           </div>
 
           {/* Wide Indigo Banner matching Image 5 */}
-          <div className="rounded-2xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-800 p-6 sm:p-7 text-white shadow-md relative overflow-hidden">
-            <div className="relative z-10 space-y-2 max-w-2xl">
+          <div className="rounded-2xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-800 p-6 sm:p-7 text-white shadow-md relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="relative z-10 space-y-2 max-w-xl">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-0.5 text-[10px] font-bold tracking-wide uppercase">
                 <Sparkles className="h-3 w-3" /> AI Librarian Assistant Active
               </div>
@@ -471,6 +565,17 @@ function CatalogHome() {
                 Open the LibrisAI Assistant widget on the bottom right to query full-text sources instantly with Gemini-powered reasoning.
               </p>
             </div>
+
+            <Button
+              size="sm"
+              onClick={() => {
+                const btn = document.querySelector('button[aria-label="Open AI Librarian"]') as HTMLButtonElement;
+                if (btn) btn.click();
+              }}
+              className="relative z-10 bg-white text-indigo-700 hover:bg-white/90 font-bold text-xs shadow-md shrink-0 self-start sm:self-auto gap-2"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Launch Literature AI
+            </Button>
           </div>
 
           {/* Catalog Format & Filter Controls */}
@@ -484,19 +589,40 @@ function CatalogHome() {
               </p>
             </div>
 
-            {/* Format Tabs */}
-            <Tabs
-              value={selectedFormat}
-              onValueChange={setSelectedFormat}
-              className="w-full sm:w-auto"
-            >
-              <TabsList className="h-9 bg-muted/60 p-1">
-                <TabsTrigger value="ALL" className="text-xs font-medium">All Formats</TabsTrigger>
-                <TabsTrigger value="PDF" className="text-xs font-medium">PDF</TabsTrigger>
-                <TabsTrigger value="EPUB" className="text-xs font-medium">ePub</TabsTrigger>
-                <TabsTrigger value="AUDIO" className="text-xs font-medium">Audio</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {/* Filter Trigger & Format Tabs */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={activeFiltersCount > 0 ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsFilterModalOpen(true)}
+                className="h-9 px-3 text-xs font-semibold gap-1.5 shadow-2xs"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span>Filter & Refine</span>
+                {activeFiltersCount > 0 && (
+                  <span className="ml-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-0.2 text-[10px] font-mono">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+
+              {/* Format Tabs */}
+              <Tabs
+                value={selectedFormat}
+                onValueChange={(val) => {
+                  setSelectedFormat(val);
+                  setFilterCriteria((prev) => ({ ...prev, format: val as any }));
+                }}
+                className="w-full sm:w-auto"
+              >
+                <TabsList className="h-9 bg-muted/60 p-1">
+                  <TabsTrigger value="ALL" className="text-xs font-medium">All Formats</TabsTrigger>
+                  <TabsTrigger value="PDF" className="text-xs font-medium">PDF</TabsTrigger>
+                  <TabsTrigger value="EPUB" className="text-xs font-medium">ePub</TabsTrigger>
+                  <TabsTrigger value="AUDIO" className="text-xs font-medium">Audio</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           {/* Discipline Badges */}
@@ -521,6 +647,73 @@ function CatalogHome() {
               </Button>
             ))}
           </div>
+
+          {/* Active Filter Chips Bar (Milestone 12) */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5 text-xs">
+              <span className="text-[11px] font-bold text-primary flex items-center gap-1 mr-1">
+                <Filter className="h-3 w-3" /> Active Filters:
+              </span>
+              {(filterCriteria.minYear > 2010 || filterCriteria.maxYear < 2026) && (
+                <Badge variant="outline" className="text-[11px] bg-card gap-1 py-0.5 border-border">
+                  <span>Year: {filterCriteria.minYear}–{filterCriteria.maxYear}</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => setFilterCriteria({ ...filterCriteria, minYear: 2010, maxYear: 2026 })}
+                  />
+                </Badge>
+              )}
+              {filterCriteria.accessTier !== "all" && (
+                <Badge variant="outline" className="text-[11px] bg-card gap-1 py-0.5 border-border">
+                  <span>Tier: {filterCriteria.accessTier === "open-access" ? "Open Access" : "Peer Reviewed"}</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => setFilterCriteria({ ...filterCriteria, accessTier: "all" })}
+                  />
+                </Badge>
+              )}
+              {filterCriteria.format !== "ALL" && (
+                <Badge variant="outline" className="text-[11px] bg-card gap-1 py-0.5 border-border">
+                  <span>Format: {filterCriteria.format}</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setFilterCriteria({ ...filterCriteria, format: "ALL" });
+                      setSelectedFormat("ALL");
+                    }}
+                  />
+                </Badge>
+              )}
+              {filterCriteria.minRating > 0 && (
+                <Badge variant="outline" className="text-[11px] bg-card gap-1 py-0.5 border-border">
+                  <span>Rating: ★ {filterCriteria.minRating}+</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => setFilterCriteria({ ...filterCriteria, minRating: 0 })}
+                  />
+                </Badge>
+              )}
+              {filterCriteria.sortBy !== "popular" && (
+                <Badge variant="outline" className="text-[11px] bg-card gap-1 py-0.5 border-border">
+                  <span>Sort: {filterCriteria.sortBy}</span>
+                  <X
+                    className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => setFilterCriteria({ ...filterCriteria, sortBy: "popular" })}
+                  />
+                </Badge>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterCriteria(DEFAULT_FILTER_CRITERIA);
+                  setSelectedFormat("ALL");
+                }}
+                className="text-[11px] text-muted-foreground hover:text-primary underline ml-auto font-medium"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
 
           {/* Monographs Grid - Responsive 3-4 Columns on Desktop */}
           <section id="featured-books">
@@ -556,6 +749,26 @@ function CatalogHome() {
           </section>
         </div>
       </div>
+
+      {/* Advanced Catalog Multi-Filter Modal (Milestone 12) */}
+      <CatalogFilterModal
+        open={isFilterModalOpen}
+        onOpenChange={setIsFilterModalOpen}
+        criteria={filterCriteria}
+        onApply={(applied) => {
+          setFilterCriteria(applied);
+          if (applied.format !== "ALL") {
+            setSelectedFormat(applied.format);
+          }
+          toast.success("Catalog filters updated!");
+        }}
+        onReset={() => {
+          setFilterCriteria(DEFAULT_FILTER_CRITERIA);
+          setSelectedFormat("ALL");
+          toast.info("Catalog filters reset.");
+        }}
+        totalResultsCount={filteredBooks.length}
+      />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { CommandMenu } from "@/components/shared/command-menu";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen w-full max-w-full bg-background flex flex-col justify-between overflow-x-hidden text-foreground">
+    <div className="min-h-screen w-full max-w-full bg-background bg-atmospheric-glow flex flex-col justify-between overflow-x-hidden text-foreground">
       <div className="w-full">
         <Navbar />
         <main className="mx-auto w-full max-w-[1720px] 2xl:max-w-[1840px] min-w-0 px-4 pt-4 pb-16 sm:px-6 sm:pt-6 lg:px-8 xl:px-10 overflow-x-hidden">

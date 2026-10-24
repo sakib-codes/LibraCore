@@ -67,11 +67,11 @@
   - **Academic Disciplines:** Instant jump to discipline filters (e.g. Cryptography, Neural Systems, Quantum Computing).
   - **Quick Actions:** "Toggle Dark/Light Mode", "Ask AI Librarian", "Export Downloads CSV", "Sign Out".
 
-### Milestone 10: In-Reader Annotation & Research Notes Engine (`/books/[id]`)
-- [ ] Add a collapsible **Research Notes & Page Bookmarks** drawer to `src/components/shared/book-preview-reader.tsx`.
-- [ ] Allow scholars to bookmark specific page numbers (e.g., "Page 14: Lattice-Based Hardness Proof") and save timestamped research notes.
-- [ ] Provide a "Jump to Page" click action on any note to immediately navigate the reader to that exact manuscript section.
-- [ ] Persist notes in `localStorage` per monograph ID with one-click "Export Notes to Markdown/BibTeX".
+### Milestone 10: In-Reader Annotation & Research Notes Engine (`/books/[id]`) — [✅ 100% Complete & Verified]
+- [x] Add a collapsible **Research Notes & Page Bookmarks** drawer to `src/components/shared/book-preview-reader.tsx`.
+- [x] Allow scholars to bookmark specific page numbers (e.g., "Page 14: Lattice-Based Hardness Proof") and save timestamped research notes.
+- [x] Provide a "Jump to Page" click action on any note to immediately navigate the reader to that exact manuscript section.
+- [x] Persist notes in `localStorage` per monograph ID with one-click "Export Notes to Markdown/BibTeX".
 
 ### Milestone 11: Custom Research Collections Engine (`/dashboard` & `/books/[id]`) — [✅ 100% Complete & Verified]
 - [x] Create Supabase migration `20261025000000_add_collections_and_profile_fields.sql` and TypeScript database types for `collections` and `collection_books`.
@@ -80,22 +80,21 @@
 - [x] Add an "Add to Collection" dialog action on each book card across `/dashboard` and in the action bar of `/books/[id]`.
 - [x] Allow clicking any collection pill in the Thematic Collections rail to filter the saved resources grid dynamically by that specific collection.
 
-### Milestone 12: Advanced Catalog Multi-Filter Popover & Year Slider
-- [ ] Upgrade the "Filter Catalog" button on `/dashboard` and `/?filter=open` to open an advanced filter popover/modal.
-- [ ] Support multi-criteria filtering:
-  - Publication Year Range (e.g., 2020 – 2026).
+### Milestone 12: Advanced Catalog Multi-Filter Popover & Year Slider — [✅ 100% Complete & Verified]
+- [x] Upgrade the "Filter Catalog" button on `/dashboard` and `/?filter=open` to open an advanced filter popover/modal (`CatalogFilterModal`).
+- [x] Support multi-criteria filtering:
+  - Publication Year Range (e.g., 2020 – 2026) with dual sliders and presets.
   - Academic Access Tier (Open Access, Peer-Reviewed, Institutional Repository).
   - File Formats (PDF, EPUB, Audio Lecture, Dataset).
-  - Minimum Academic Rating (4.0+, 4.5+, 5.0).
-- [ ] Add active filter chip tags with one-click "Clear All Filters" reset.
+  - Minimum Academic Rating (4.0+, 4.5+, 4.8+).
+  - Sort Index Order (Most Downloaded, Recently Added, Citations, Year).
+- [x] Add active filter chip tags with one-click "Clear All Filters" reset.
 
-### Milestone 13: Admin Gemini AI Catalog Intelligence & Health Report Modal
-- [ ] Upgrade the "Generate AI Report" button in the Admin sidebar (`role-layout.tsx`) from a simple notification to an interactive **AI Catalog Health & Intelligence Modal**.
-- [ ] Generate a comprehensive automated audit with Gemini AI:
-  - Catalog coverage analysis by academic domain.
-  - Identification of monographs missing DOI, ISBN, or rich summaries.
-  - Automated recommendations for trending research topics to expand repository coverage.
-  - One-click "Apply Recommended Category Tags".
+### Milestone 13: Admin Gemini AI Catalog Intelligence & Health Report Modal — [✅ 100% Complete & Verified]
+- [x] Add `generate-catalog-report` action to `src/app/api/ai/route.ts` using `gemini-3.5-flash` to audit catalog density, metadata health, and research expansion topics.
+- [x] Build `src/components/admin/catalog-intelligence-modal.tsx` with high-density charts, domain breakdown, DOI/ISBN completeness meters, and actionable recommendations.
+- [x] Connect the "Generate AI Report" button in `role-layout.tsx` and `src/app/admin/page.tsx` to trigger this modal.
+- [x] Provide one-click "Export Health Audit as Markdown/JSON" and "Apply Recommended Category Tags".
 
 ### Milestone 14: Quality Assurance, Verification & Documentation
 - [x] Verify `npx tsc --noEmit` returns 0 errors.

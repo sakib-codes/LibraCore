@@ -586,6 +586,14 @@ function AdminDashboardContent() {
             <Button
               variant="outline"
               size="sm"
+              className="gap-2 text-xs font-semibold shadow-2xs border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-libris-ai-report"))}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> AI Health Audit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               className="gap-2 text-xs font-semibold shadow-2xs"
               onClick={() => {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(books, null, 2));

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { PUBLIC_NAV_LINKS, USER_NAV_LINKS, ADMIN_NAV_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -121,7 +122,10 @@ export function Navbar() {
         </button>
 
         {/* Right Action Icons & Profile */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Theme Toggle (Light / Dark) */}
+          <ThemeToggle />
+
           {/* Notifications Bell */}
           <button
             type="button"

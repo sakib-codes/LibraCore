@@ -3,6 +3,7 @@ import {
   chatWithLibrarian,
   askBookContextualQuestion,
   generateBookDescription,
+  generateCatalogHealthAudit,
 } from "@/lib/chatbot.server";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,15 @@ export async function POST(req: NextRequest) {
           description,
           aiSummary: description.slice(0, 140) + "...",
         },
+      });
+    }
+
+    // 4. Admin Gemini AI Catalog Intelligence & Health Report
+    if (action === "catalog-report" || action === "generate-catalog-report") {
+      const report = await generateCatalogHealthAudit();
+      return NextResponse.json({
+        success: true,
+        report,
       });
     }
 

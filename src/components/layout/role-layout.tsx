@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CatalogIntelligenceModal } from "@/components/admin/catalog-intelligence-modal";
 
 interface RoleLayoutProps {
   allow: AppRole;
@@ -297,8 +298,9 @@ export function RoleLayout({ allow, children }: RoleLayoutProps) {
               <Button
                 size="sm"
                 className="w-full text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-xs"
-                onClick={() => toast.info("Gemini AI Indexing Report generated for current catalog inventory.")}
+                onClick={() => window.dispatchEvent(new CustomEvent("open-libris-ai-report"))}
               >
+                <Sparkles className="h-3.5 w-3.5" />
                 Generate AI Report
               </Button>
             </div>
@@ -310,6 +312,9 @@ export function RoleLayout({ allow, children }: RoleLayoutProps) {
       <section className="flex-1 min-w-0">
         {children}
       </section>
+
+      {/* Admin Gemini AI Catalog Intelligence Modal */}
+      {!isUserDashboard && <CatalogIntelligenceModal />}
     </div>
   );
 }
