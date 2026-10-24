@@ -10,7 +10,7 @@ export function getGeminiClient(): GoogleGenAI {
   return geminiClientInstance;
 }
 
-export const GEMINI_DEFAULT_MODEL = "gemini-3.8-flash";
+export const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
 
 export interface LibrarianChatMessage {
   role: "user" | "assistant" | "system";

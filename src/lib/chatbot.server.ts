@@ -63,7 +63,7 @@ const FALLBACK_BOOKS: CatalogBookSummary[] = [
   },
 ];
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 let cachedCatalog: CatalogBookSummary[] | null = null;
 let lastCacheTimestamp = 0;
@@ -122,14 +122,14 @@ async function generateWithFallback(contents: string): Promise<string | null> {
   if (!apiKey) return null;
 
   // 1. Standard Edge fetch (100% Cloudflare Workers / Edge Runtime compatible)
-  const models = [GEMINI_MODEL, "gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
-  for (const model of models) {
+  const candidateModels = Array.from(new Set([GEMINI_MODEL, "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"]));
+  for (const model of candidateModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(20000),
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: contents }] }],
         }),
@@ -148,7 +148,7 @@ async function generateWithFallback(contents: string): Promise<string | null> {
   // 2. Secondary fallback via @google/genai SDK
   try {
     const ai = getGeminiClient();
-    const res = await ai.models.generateContent({ model: "gemini-3.8-flash", contents });
+    const res = await ai.models.generateContent({ model: "gemini-3.5-flash", contents });
     if (res.text) return res.text;
   } catch (err: any) {
     console.warn("[Gemini SDK] SDK fallback error:", err?.message || err);

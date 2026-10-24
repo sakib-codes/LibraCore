@@ -219,7 +219,7 @@ export function ChatWidget() {
                 <h3 className="text-sm font-bold leading-tight">LibrisAI Assistant (Gemini)</h3>
                 <p className="text-[10px] text-indigo-100 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  Gemini Flash 2.5 Active
+                  Gemini 3.5 Flash Active
                 </p>
               </div>
             </div>
