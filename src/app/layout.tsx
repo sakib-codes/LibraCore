@@ -40,7 +40,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased text-foreground">
         <AuthProvider>
           <AppShell>{children}</AppShell>
-          <Toaster position="top-right" closeButton />
+          <Toaster position="bottom-left" richColors closeButton />
         </AuthProvider>
       </body>
     </html>
