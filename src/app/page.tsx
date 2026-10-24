@@ -15,6 +15,11 @@ import {
   Headphones,
   Atom,
   Loader2,
+  Bookmark,
+  ArrowRight,
+  Shield,
+  Layers,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -28,74 +33,149 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Book, Category, FileType } from "@/integrations/supabase/types";
 
-// Fallback Seed Catalog Data
+// Fallback Seed Catalog Data matching Image 2, 3, 5
 const SAMPLE_CATEGORIES: Category[] = [
   { id: "c1", name: "Computer Science", slug: "computer-science", description: "Algorithms, Systems, Machine Learning", icon: "Cpu", display_order: 1, created_at: "" },
-  { id: "c2", name: "Network Security", slug: "network-security", description: "Cryptography and defensive systems", icon: "Shield", display_order: 2, created_at: "" },
-  { id: "c3", name: "Research Papers", slug: "research-papers", description: "Peer-reviewed scholarly monographs", icon: "FileText", display_order: 3, created_at: "" },
-  { id: "c4", name: "Audio Books", slug: "audio-books", description: "High-fidelity audio editions and lectures", icon: "Headphones", display_order: 4, created_at: "" },
-  { id: "c5", name: "eBooks & Literature", slug: "ebooks-literature", description: "Classics, philosophy, and essays", icon: "BookOpen", display_order: 5, created_at: "" },
+  { id: "c2", name: "Cybersecurity & Crypto", slug: "cybersecurity", description: "Cryptography and post-quantum security", icon: "Shield", display_order: 2, created_at: "" },
+  { id: "c3", name: "Neural Systems & AI", slug: "neural-systems", description: "Transformer architectures, attention mechanisms, LLMs", icon: "Sparkles", display_order: 3, created_at: "" },
+  { id: "c4", name: "Topological Math", slug: "topological-math", description: "Algebraic topology, persistent homology, quantum manifolds", icon: "Binary", display_order: 4, created_at: "" },
+  { id: "c5", name: "Audio Books & Lectures", slug: "audio-books", description: "Scholarly audio recordings and lectures", icon: "Headphones", display_order: 5, created_at: "" },
 ];
 
 const SAMPLE_BOOKS: (Book & { categories?: Category | null })[] = [
   {
-    id: "b1",
-    title: "Designing Data-Intensive Applications",
-    author: "Martin Kleppmann",
-    isbn: "978-1449373320",
-    description: "The definitive guide to the architecture and storage systems powering modern reliable applications.",
-    ai_summary: "Deep architectural principles covering consensus, partitioning, replication models, and distributed reliability.",
-    category_id: "c1",
+    id: "b-crypto",
+    title: "Cryptographic Security: Foundations and Practice",
+    author: "Dr. Eliza V. Adams",
+    isbn: "978-0198834921",
+    description: "A comprehensive academic monograph exploring modern cryptographic protocols, post-quantum cryptography resistance, and lattice-based cryptography.",
+    ai_summary: "Post-quantum cryptographic transitions, lattice constructions, and provable security models.",
+    category_id: "c2",
+    cover_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    file_type: "PDF",
+    file_size_bytes: 14200000,
+    page_count: 342,
+    duration_seconds: null,
+    language: "English",
+    publisher: "Academic Press (Oxford / Cambridge)",
+    published_year: 2025,
+    is_featured: true,
+    is_archived: false,
+    download_count: 9800,
+    view_count: 14200,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: SAMPLE_CATEGORIES[1],
+  },
+  {
+    id: "b-deep-gen",
+    title: "Foundations of Deep Generative Networks",
+    author: "Dr. Aris Thorne",
+    isbn: "978-0262045611",
+    description: "A comprehensive treatise on modern probabilistic modeling, score-based generative systems, and transformer architectures in academic contexts.",
+    ai_summary: "Diffusion models, continuous score matching, and latent variable generative formulations.",
+    category_id: "c3",
+    cover_url: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&auto=format&fit=crop&q=80",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    file_type: "PDF",
+    file_size_bytes: 18500000,
+    page_count: 480,
+    duration_seconds: null,
+    language: "English",
+    publisher: "MIT Press",
+    published_year: 2024,
+    is_featured: true,
+    is_archived: false,
+    download_count: 6720,
+    view_count: 12100,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: SAMPLE_CATEGORIES[2],
+  },
+  {
+    id: "b-llm-retrieval",
+    title: "Large Language Models in Scholarly Retrieval",
+    author: "Elena Rostova",
+    isbn: "978-1492080510",
+    description: "Investigating retrieval-augmented generation pipelines for automated academic literature reviews and precise citation tracing.",
+    ai_summary: "Dense embedding retrieval, vector indexing, and hallucinations mitigation in scholarly synthesis.",
+    category_id: "c3",
     cover_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
     file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
     file_type: "PDF",
-    file_size_bytes: 14500000,
-    page_count: 616,
+    file_size_bytes: 11400000,
+    page_count: 360,
     duration_seconds: null,
     language: "English",
-    publisher: "O'Reilly Media",
-    published_year: 2017,
+    publisher: "Stanford Univ. Press",
+    published_year: 2024,
     is_featured: true,
     is_archived: false,
-    download_count: 1420,
-    view_count: 4890,
+    download_count: 8430,
+    view_count: 15300,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    categories: SAMPLE_CATEGORIES[0],
+    categories: SAMPLE_CATEGORIES[2],
   },
   {
-    id: "b2",
-    title: "The Art of Computer Programming, Vol 1",
-    author: "Donald E. Knuth",
-    isbn: "978-0201896831",
-    description: "Fundamental Algorithms: the seminal classic in theoretical computer science.",
-    ai_summary: "Foundational breakdown of memory allocation, trees, queues, and mathematical asymptotic runtime analysis.",
-    category_id: "c1",
-    cover_url: "https://images.unsplash.com/photo-1532012164546-f432f2e3777a?w=600&auto=format&fit=crop&q=80",
-    file_url: "sample-data/taocp-v1.epub",
+    id: "b-neural-circuitry",
+    title: "Advanced Neural Circuitry & Memory Models",
+    author: "Prof. Marcus Sterling",
+    isbn: "978-0262039559",
+    description: "Bio-inspired neural architectures, attention manifolds, and synaptic weight plasticity in synthetic cognitive engines.",
+    ai_summary: "Associative memory networks, transformer memory consolidation, and cognitive substrate emulation.",
+    category_id: "c3",
+    cover_url: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=600&auto=format&fit=crop&q=80",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
     file_type: "EPUB",
-    file_size_bytes: 8200000,
-    page_count: 672,
+    file_size_bytes: 8500000,
+    page_count: 420,
     duration_seconds: null,
     language: "English",
-    publisher: "Addison-Wesley",
-    published_year: 1997,
+    publisher: "LibrisAI Press",
+    published_year: 2024,
     is_featured: true,
     is_archived: false,
-    download_count: 980,
-    view_count: 3120,
+    download_count: 3450,
+    view_count: 8900,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    categories: SAMPLE_CATEGORIES[0],
+    categories: SAMPLE_CATEGORIES[2],
   },
   {
-    id: "b3",
-    title: "Meditations: Audio Edition & Commentary",
+    id: "b-topology-quantum",
+    title: "Topological Data Analysis in Quantum States",
+    author: "Dr. Sarah Jenkins",
+    isbn: "978-1108424264",
+    description: "Persistent homology and topological quantum state classification for high-density information arrays.",
+    ai_summary: "Algebraic topology applied to quantum entanglement spaces and manifold learning.",
+    category_id: "c4",
+    cover_url: "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=600&auto=format&fit=crop&q=80",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    file_type: "PDF",
+    file_size_bytes: 22100000,
+    page_count: 512,
+    duration_seconds: null,
+    language: "English",
+    publisher: "Cambridge Monograph Series",
+    published_year: 2023,
+    is_featured: true,
+    is_archived: false,
+    download_count: 2100,
+    view_count: 6700,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: SAMPLE_CATEGORIES[3],
+  },
+  {
+    id: "b-audio-meditations",
+    title: "Meditations: Audio Edition & Academic Commentary",
     author: "Marcus Aurelius",
     isbn: "978-0140449334",
-    description: "Private personal reflections and stoic philosophical journal of the Roman Emperor.",
+    description: "Private personal reflections and stoic philosophical journal of the Roman Emperor with academic annotations.",
     ai_summary: "Twelve books analyzing mindfulness of mortality, emotional equanimity, and ethical leadership.",
-    category_id: "c4",
+    category_id: "c5",
     cover_url: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop&q=80",
     file_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     file_type: "AUDIO",
@@ -107,161 +187,107 @@ const SAMPLE_BOOKS: (Book & { categories?: Category | null })[] = [
     published_year: 2024,
     is_featured: true,
     is_archived: false,
-    download_count: 2310,
-    view_count: 7600,
+    download_count: 4210,
+    view_count: 9800,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    categories: SAMPLE_CATEGORIES[3],
-  },
-  {
-    id: "b4",
-    title: "Deep Learning Foundations & Tensor Methods",
-    author: "Ian Goodfellow, Yoshua Bengio",
-    isbn: "978-0262035613",
-    description: "A comprehensive textbook on deep learning covering neural networks, backpropagation, and generative models.",
-    ai_summary: "Mathematical foundations of loss landscapes, optimization theory, and autoencoder architectures.",
-    category_id: "c3",
-    cover_url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80",
-    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    file_type: "PDF",
-    file_size_bytes: 22000000,
-    page_count: 800,
-    duration_seconds: null,
-    language: "English",
-    publisher: "MIT Press",
-    published_year: 2016,
-    is_featured: false,
-    is_archived: false,
-    download_count: 1890,
-    view_count: 5200,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    categories: SAMPLE_CATEGORIES[2],
+    categories: SAMPLE_CATEGORIES[4],
   },
 ];
 
-function CatalogContent() {
-  const { user } = useAuth();
+function CatalogHome() {
   const searchParams = useSearchParams();
+  const queryParam = searchParams.get("q") || "";
+  const { user } = useAuth();
+
   const [books, setBooks] = useState<(Book & { categories?: Category | null })[]>(SAMPLE_BOOKS);
   const [categories, setCategories] = useState<Category[]>(SAMPLE_CATEGORIES);
-  const [loading, setLoading] = useState(true);
-
-  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(queryParam);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedFormat, setSelectedFormat] = useState<string>("ALL");
-  const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set(["b1"]));
+  const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
 
-  // Sync category & search from URL parameters
   useEffect(() => {
-    const categoryParam = searchParams.get("category");
-    if (categoryParam) {
-      setSelectedCategory(categoryParam);
+    if (queryParam) {
+      setSearchQuery(queryParam);
     }
-    const qParam = searchParams.get("q") || searchParams.get("search");
-    if (qParam) {
-      setSearchQuery(qParam);
-    }
-  }, [searchParams]);
+  }, [queryParam]);
 
-  // Load books & categories from Supabase on mount
   useEffect(() => {
     async function loadCatalog() {
       try {
-        const [booksRes, catsRes] = await Promise.all([
-          supabase
-            .from("books")
-            .select("*, categories(*)")
-            .eq("is_archived", false)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("categories")
-            .select("*")
-            .order("display_order", { ascending: true }),
-        ]);
+        setLoading(true);
+        const { data: dbCategories } = await (supabase
+          .from("categories") as any)
+          .select("*")
+          .order("display_order", { ascending: true });
 
-        if (catsRes.data && catsRes.data.length > 0) {
-          setCategories(catsRes.data);
+        if (dbCategories && dbCategories.length > 0) {
+          setCategories(dbCategories);
         }
 
-        if (booksRes.data && booksRes.data.length > 0) {
-          const mappedBooks = booksRes.data.map((b: any) => ({
-            ...b,
-            file_type: (b.file_type?.toUpperCase() || "PDF") as FileType,
-          }));
-          setBooks(mappedBooks);
+        const { data: dbBooks } = await (supabase
+          .from("books") as any)
+          .select("*, categories(*)")
+          .eq("is_archived", false)
+          .order("created_at", { ascending: false });
+
+        if (dbBooks && dbBooks.length > 0) {
+          const merged = [...dbBooks, ...SAMPLE_BOOKS.filter(s => !dbBooks.some((b: any) => b.id === s.id))];
+          setBooks(merged);
+        }
+
+        if (user) {
+          const { data: bookmarks } = await (supabase
+            .from("bookmarks") as any)
+            .select("book_id")
+            .eq("user_id", user.id);
+
+          if (bookmarks) {
+            setSavedBookIds(new Set(bookmarks.map((b: any) => b.book_id)));
+          }
         }
       } catch (err) {
-        console.warn("Could not query Supabase catalog, using fallback seed catalog:", err);
+        console.warn("Using sample fallback catalog:", err);
       } finally {
         setLoading(false);
       }
     }
 
     loadCatalog();
-  }, []);
-
-  // Sync user saved_books
-  useEffect(() => {
-    async function fetchSaved() {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from("saved_books")
-          .select("book_id")
-          .eq("user_id", user.id);
-
-        if (!error && data) {
-          setSavedBookIds(new Set((data as any[]).map((item) => item.book_id)));
-        }
-      } catch {
-        // Fallback to local state
-      }
-    }
-    fetchSaved();
   }, [user]);
 
   const toggleSave = async (bookId: string) => {
-    const isCurrentlySaved = savedBookIds.has(bookId);
+    if (!user) {
+      toast.info("Sign in to save books to your personal library queue.");
+      return;
+    }
 
-    // Optimistically update local UI
-    setSavedBookIds((prev) => {
-      const next = new Set(prev);
-      if (isCurrentlySaved) next.delete(bookId);
-      else next.add(bookId);
-      return next;
-    });
+    const nextSaved = new Set(savedBookIds);
+    const isSaved = nextSaved.has(bookId);
 
-    if (user) {
-      try {
-        if (isCurrentlySaved) {
-          await (supabase
-            .from("saved_books") as any)
-            .delete()
-            .match({ user_id: user.id, book_id: bookId });
-          toast.info("Removed from your reading list");
-        } else {
-          await (supabase
-            .from("saved_books") as any)
-            .insert({ user_id: user.id, book_id: bookId });
-          toast.success("Saved to your reading list!");
-        }
-      } catch (err) {
-        toast.error("Failed to update bookmark in database.");
-      }
+    if (isSaved) {
+      nextSaved.delete(bookId);
+      setSavedBookIds(nextSaved);
+      toast.info("Removed from saved reading queue.");
+      await (supabase.from("bookmarks") as any).delete().eq("user_id", user.id).eq("book_id", bookId);
     } else {
-      toast.info(isCurrentlySaved ? "Removed from reading list" : "Saved to reading list (Sign in to sync across devices)");
+      nextSaved.add(bookId);
+      setSavedBookIds(nextSaved);
+      toast.success("Saved to reading queue!");
+      await (supabase.from("bookmarks") as any).insert({ user_id: user.id, book_id: bookId });
     }
   };
 
   const filteredBooks = books.filter((book) => {
-    const query = searchQuery.toLowerCase().trim();
+    const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
-      !query ||
-      book.title.toLowerCase().includes(query) ||
-      book.author.toLowerCase().includes(query) ||
-      book.description?.toLowerCase().includes(query) ||
-      book.categories?.name?.toLowerCase().includes(query);
+      !q ||
+      book.title.toLowerCase().includes(q) ||
+      book.author.toLowerCase().includes(q) ||
+      (book.description && book.description.toLowerCase().includes(q)) ||
+      (book.isbn && book.isbn.toLowerCase().includes(q));
 
     const matchesCategory =
       selectedCategory === "all" ||
@@ -275,149 +301,262 @@ function CatalogContent() {
   });
 
   return (
-    <div className="space-y-10">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-b from-indigo-500/10 via-background to-background p-6 sm:p-12 text-center shadow-xs">
-        <div className="mx-auto max-w-3xl space-y-4">
-          <Badge
-            variant="secondary"
-            className="gap-1.5 border-primary/20 bg-primary/10 text-primary py-1 px-3 text-xs font-semibold"
-          >
-            <Sparkles className="h-3.5 w-3.5" /> Intelligent Digital Library & AI Librarian
-          </Badge>
-
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl text-foreground">
-            Explore, Read & Research with{" "}
-            <span className="bg-gradient-to-r from-indigo-600 to-indigo-500 bg-clip-text text-transparent">
-              LibrisAI
-            </span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Access thousands of academic texts, research papers, ePubs, and audiobooks.
-            Query any book interactively with our Google Gemini librarian.
-          </p>
-
-          {/* Search Bar */}
-          <div className="relative mx-auto mt-6 max-w-xl">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search books by title, author, keyword, or topic..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-12 w-full rounded-2xl bg-card pl-11 pr-4 text-sm shadow-md border-border/80 focus-visible:ring-2 focus-visible:ring-primary"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Category Pills & Format Filter */}
-      <section id="categories" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">
-              Browse Academic Catalog
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Showing {filteredBooks.length} of {books.length} digital resources
-            </p>
-          </div>
-
-          {/* Format Tabs */}
-          <Tabs
-            value={selectedFormat}
-            onValueChange={setSelectedFormat}
-            className="w-full sm:w-auto overflow-x-auto"
-          >
-            <TabsList className="h-9 bg-muted/60 w-full sm:w-auto">
-              <TabsTrigger value="ALL" className="text-xs flex-1 sm:flex-initial">All Formats</TabsTrigger>
-              <TabsTrigger value="PDF" className="text-xs flex-1 sm:flex-initial">PDF</TabsTrigger>
-              <TabsTrigger value="EPUB" className="text-xs flex-1 sm:flex-initial">ePub</TabsTrigger>
-              <TabsTrigger value="AUDIO" className="text-xs flex-1 sm:flex-initial">Audio</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {/* Category Pill Filters */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button
-            size="sm"
-            variant={selectedCategory === "all" ? "default" : "outline"}
-            className="h-8 rounded-full text-xs font-medium"
-            onClick={() => setSelectedCategory("all")}
-          >
-            All Disciplines
-          </Button>
-          {categories.map((cat) => (
-            <Button
-              key={cat.id}
-              size="sm"
-              variant={selectedCategory === cat.id || selectedCategory === cat.slug ? "default" : "outline"}
-              className="h-8 rounded-full text-xs font-medium"
-              onClick={() => setSelectedCategory(cat.id)}
-            >
-              {cat.name}
-            </Button>
-          ))}
-        </div>
-      </section>
-
-      {/* Books Grid */}
-      <section id="featured">
-        {loading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <LoadingSkeleton key={i} variant="card" />
-            ))}
-          </div>
-        ) : filteredBooks.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredBooks.map((book) => (
-              <BookCard
-                key={book.id}
-                book={book}
-                isSaved={savedBookIds.has(book.id)}
-                onToggleSave={toggleSave}
+    <div className="space-y-8">
+      {/* 2-Column Desktop Layout matching Image 5 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
+        {/* Left Side Rail (Mockup Image 5: Repository Search & Active Collections) */}
+        <aside className="lg:col-span-4 xl:col-span-3 space-y-5">
+          {/* Repository Search Card matching Image 5 */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
+            <h3 className="font-bold text-sm text-foreground tracking-tight">Repository Search</h3>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search 4.2M papers, books... ⌘K"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-3 h-10 text-xs rounded-xl bg-muted/40 border-border/70"
               />
+            </div>
+
+            {/* Quick Tag Pills */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setSearchQuery("Machine Learning")}
+                className="rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 px-2.5 py-1 text-[11px] font-medium hover:bg-indigo-500/20 transition-colors"
+              >
+                Machine Learning
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedFormat("PDF")}
+                className="rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 text-[11px] font-medium hover:bg-emerald-500/20 transition-colors"
+              >
+                Open Access
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedFormat("AUDIO")}
+                className="rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-1 text-[11px] font-medium hover:bg-amber-500/20 transition-colors"
+              >
+                Audio Lectures
+              </button>
+            </div>
+          </div>
+
+          {/* Active Collections Card matching Image 5 */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+              <h3 className="font-bold text-sm text-foreground tracking-tight">Active Collections</h3>
+              <span className="text-[10px] text-muted-foreground font-mono">MIT/Harvard Index</span>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <Link
+                href="/?q=neural"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/60 transition-colors text-foreground font-medium"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                  <span className="truncate">Neural Architecture Archives</span>
+                </div>
+                <span className="text-muted-foreground font-mono text-[11px]">1,420</span>
+              </Link>
+
+              <Link
+                href="/?q=quantum"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/60 transition-colors text-foreground font-medium"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="truncate">Quantum Computing Index</span>
+                </div>
+                <span className="text-muted-foreground font-mono text-[11px]">850</span>
+              </Link>
+
+              <Link
+                href="/?q=linguistics"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/60 transition-colors text-foreground font-medium"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="truncate">Computational Linguistics</span>
+                </div>
+                <span className="text-muted-foreground font-mono text-[11px]">2,115</span>
+              </Link>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Main Content (Mockup Image 5: Featured Monographs & AI Banner) */}
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+          {/* Featured Monograph Highlights Cards matching Image 5 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
+            {/* Card 1: Foundations of Deep Generative Networks */}
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border-0">
+                    Featured Text
+                  </Badge>
+                  <Bookmark className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-foreground tracking-tight">
+                    Foundations of Deep Generative Networks
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-3">
+                    A comprehensive treatise on modern probabilistic modeling, score-based generative systems, and transformer architectures in academic contexts.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-between pt-3 border-t border-border/50 text-xs">
+                <span className="text-muted-foreground font-medium truncate max-w-[170px]">
+                  Dr. Aris Thorne • MIT Press
+                </span>
+                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs">
+                  <Link href="/books/b-deep-gen">Access Record</Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Card 2: Large Language Models in Scholarly Retrieval */}
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-bold border-0">
+                    Open Access
+                  </Badge>
+                  <Bookmark className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-foreground tracking-tight">
+                    Large Language Models in Scholarly Retrieval
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-3">
+                    Investigating retrieval-augmented generation pipelines for automated academic literature reviews and precise citation tracing.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-between pt-3 border-t border-border/50 text-xs">
+                <span className="text-muted-foreground font-medium truncate max-w-[170px]">
+                  Elena Rostova • Stanford Univ.
+                </span>
+                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs">
+                  <Link href="/books/b-llm-retrieval">Access Record</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Wide Indigo Banner matching Image 5 */}
+          <div className="rounded-2xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-800 p-6 sm:p-7 text-white shadow-md relative overflow-hidden">
+            <div className="relative z-10 space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+                <Sparkles className="h-3 w-3" /> AI Librarian Assistant Active
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                Need help synthesizing literature or finding citations?
+              </h2>
+              <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed">
+                Open the LibrisAI Assistant widget on the bottom right to query full-text sources instantly with Gemini-powered reasoning.
+              </p>
+            </div>
+          </div>
+
+          {/* Catalog Format & Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Scholarly Monograph Index
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredBooks.length} indexed publications and media items
+              </p>
+            </div>
+
+            {/* Format Tabs */}
+            <Tabs
+              value={selectedFormat}
+              onValueChange={setSelectedFormat}
+              className="w-full sm:w-auto"
+            >
+              <TabsList className="h-9 bg-muted/60 p-1">
+                <TabsTrigger value="ALL" className="text-xs font-medium">All Formats</TabsTrigger>
+                <TabsTrigger value="PDF" className="text-xs font-medium">PDF</TabsTrigger>
+                <TabsTrigger value="EPUB" className="text-xs font-medium">ePub</TabsTrigger>
+                <TabsTrigger value="AUDIO" className="text-xs font-medium">Audio</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Discipline Badges */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              className="h-8 rounded-full text-xs font-semibold shadow-2xs"
+              onClick={() => setSelectedCategory("all")}
+            >
+              All Disciplines
+            </Button>
+            {categories.map((cat) => (
+              <Button
+                key={cat.id}
+                size="sm"
+                variant={selectedCategory === cat.id || selectedCategory === cat.slug ? "default" : "outline"}
+                className="h-8 rounded-full text-xs font-medium shadow-2xs"
+                onClick={() => setSelectedCategory(cat.id)}
+              >
+                {cat.name}
+              </Button>
             ))}
           </div>
-        ) : (
-          <EmptyState
-            icon={BookOpen}
-            title="No matching books found"
-            description="Try adjusting your keywords, category filter, or format selection."
-            action={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedCategory("all");
-                  setSelectedFormat("ALL");
-                }}
-              >
-                Reset Search Filters
-              </Button>
-            }
-          />
-        )}
-      </section>
+
+          {/* Monographs Grid - Responsive 3-4 Columns on Desktop */}
+          <section id="featured-books">
+            {loading ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <LoadingSkeleton key={i} variant="card" />
+                ))}
+              </div>
+            ) : filteredBooks.length > 0 ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                {filteredBooks.map((book) => (
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    isSaved={savedBookIds.has(book.id)}
+                    onToggleSave={toggleSave}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={BookOpen}
+                title="No matching scholarly texts found"
+                description="Try clearing your search filters or select All Disciplines."
+                action={
+                  <Button size="sm" onClick={() => { setSearchQuery(""); setSelectedCategory("all"); setSelectedFormat("ALL"); }}>
+                    Reset Filters
+                  </Button>
+                }
+              />
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function CatalogPage() {
+export default function HomePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="py-24 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground font-medium">Loading digital library catalog...</p>
-        </div>
-      }
-    >
-      <CatalogContent />
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <CatalogHome />
     </Suspense>
   );
 }

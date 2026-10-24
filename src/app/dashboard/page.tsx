@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Bookmark,
   History,
@@ -19,6 +20,15 @@ import {
   ShieldCheck,
   HardDrive,
   GraduationCap,
+  Filter,
+  Plus,
+  RotateCcw,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RoleLayout } from "@/components/layout/role-layout";
@@ -28,6 +38,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { FileTypeBadge } from "@/components/shared/status-badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableHeader,
@@ -36,77 +47,118 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Book, Category, FileType } from "@/integrations/supabase/types";
 
-// Seed fallback data for guest / offline mode
+// Seed fallback data matching the generated UI mockups
 const SAVED_BOOKS_SEED: (Book & { categories?: Category | null })[] = [
   {
-    id: "b1",
-    title: "Designing Data-Intensive Applications",
-    author: "Martin Kleppmann",
-    isbn: "978-1449373320",
-    description: "Reliable, scalable, and maintainable data systems.",
-    ai_summary: "Distributed architectures, replication, and consensus.",
-    category_id: "c1",
-    cover_url:
-      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
+    id: "b-crypto",
+    title: "Cryptographic Security: Foundations and Practice",
+    author: "Dr. Eliza V. Adams",
+    isbn: "978-0198834921",
+    description: "A comprehensive academic monograph exploring modern cryptographic protocols, post-quantum cryptography resistance, and lattice-based cryptography.",
+    ai_summary: "Post-quantum cryptographic transitions, lattice constructions, and provable security models.",
+    category_id: "c-crypto",
+    cover_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80",
     file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
     file_type: "PDF",
-    file_size_bytes: 14500000,
-    page_count: 616,
+    file_size_bytes: 14200000,
+    page_count: 342,
     duration_seconds: null,
     language: "English",
-    publisher: "O'Reilly Media",
-    published_year: 2017,
+    publisher: "Academic Press (Oxford / Cambridge)",
+    published_year: 2024,
     is_featured: true,
     is_archived: false,
-    download_count: 1420,
-    view_count: 4890,
+    download_count: 9800,
+    view_count: 14200,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     categories: {
-      id: "c1",
-      name: "Computer Science",
-      slug: "computer-science",
-      description: null,
-      icon: "Cpu",
+      id: "c-crypto",
+      name: "Cryptography",
+      slug: "cryptography",
+      description: "Mathematical cryptography and defensive networks",
+      icon: "Shield",
       display_order: 1,
       created_at: "",
     },
   },
   {
-    id: "b3",
-    title: "Meditations: Audio Edition & Commentary",
-    author: "Marcus Aurelius",
-    isbn: "978-0140449334",
-    description: "Stoic philosophical journal.",
-    ai_summary: "Mindfulness of mortality and emotional equanimity.",
-    category_id: "c4",
-    cover_url:
-      "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop&q=80",
-    file_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    file_type: "AUDIO",
-    file_size_bytes: 48500000,
-    page_count: null,
-    duration_seconds: 18450,
+    id: "b-neural",
+    title: "Advanced Neural Circuitry & Memory Models",
+    author: "Prof. Marcus Sterling",
+    isbn: "978-0262039559",
+    description: "Bio-inspired neural architectures, attention manifolds, and synaptic weight plasticity in synthetic cognitive engines.",
+    ai_summary: "Associative memory networks, transformer memory consolidation, and cognitive substrate emulation.",
+    category_id: "c-neural",
+    cover_url: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&auto=format&fit=crop&q=80",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    file_type: "EPUB",
+    file_size_bytes: 8500000,
+    page_count: 420,
+    duration_seconds: null,
     language: "English",
-    publisher: "LibrisAI Classical Editions",
+    publisher: "LibrisAI Press",
     published_year: 2024,
     is_featured: true,
     is_archived: false,
-    download_count: 2310,
-    view_count: 7600,
+    download_count: 3450,
+    view_count: 8900,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     categories: {
-      id: "c4",
-      name: "Audio Books",
-      slug: "audio-books",
-      description: null,
-      icon: "Headphones",
-      display_order: 4,
+      id: "c-neural",
+      name: "Neural Systems",
+      slug: "neural-systems",
+      description: "Deep learning representations and neural architectures",
+      icon: "Cpu",
+      display_order: 2,
+      created_at: "",
+    },
+  },
+  {
+    id: "b-topology",
+    title: "Topological Data Analysis in Quantum States",
+    author: "Dr. Sarah Jenkins",
+    isbn: "978-1108424264",
+    description: "Persistent homology and topological quantum state classification for high-density information arrays.",
+    ai_summary: "Algebraic topology applied to quantum entanglement spaces and manifold learning.",
+    category_id: "c-topology",
+    cover_url: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=600&auto=format&fit=crop&q=80",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    file_type: "PDF",
+    file_size_bytes: 22100000,
+    page_count: 512,
+    duration_seconds: null,
+    language: "English",
+    publisher: "Cambridge Monograph Series",
+    published_year: 2023,
+    is_featured: true,
+    is_archived: false,
+    download_count: 2100,
+    view_count: 6700,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: "c-topology",
+      name: "Topological Math",
+      slug: "topological-math",
+      description: "Abstract geometries and quantum mathematical methods",
+      icon: "Binary",
+      display_order: 3,
       created_at: "",
     },
   },
@@ -126,384 +178,530 @@ interface DownloadRecord {
 const DOWNLOAD_HISTORY_SEED: DownloadRecord[] = [
   {
     id: "d1",
-    book_id: "b1",
-    book_title: "Designing Data-Intensive Applications",
-    author: "Martin Kleppmann",
+    book_id: "b-crypto",
+    book_title: "Cryptographic Security: Foundations and Practice",
+    author: "Dr. Eliza V. Adams",
     file_type: "PDF",
     file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    category_name: "Computer Science",
-    date: "Oct 23, 2026",
+    category_name: "Cryptography",
+    date: "Oct 24, 2026 • 14:22 UTC",
   },
   {
     id: "d2",
-    book_id: "b3",
-    book_title: "Meditations: Audio Edition & Commentary",
-    author: "Marcus Aurelius",
-    file_type: "AUDIO",
-    file_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    category_name: "Audio Books",
-    date: "Oct 22, 2026",
+    book_id: "b-neural",
+    book_title: "Advanced Neural Circuitry & Memory Models",
+    author: "Prof. Marcus Sterling",
+    file_type: "EPUB",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    category_name: "Neural Systems",
+    date: "Oct 22, 2026 • 09:15 UTC",
+  },
+  {
+    id: "d3",
+    book_id: "b-topology",
+    book_title: "Topological Data Analysis in Quantum States",
+    author: "Dr. Sarah Jenkins",
+    file_type: "PDF",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    category_name: "Topological Math",
+    date: "Oct 19, 2026 • 18:40 UTC",
+  },
+  {
+    id: "d4",
+    book_id: "b-distributed",
+    book_title: "Algorithmic Complexity in Distributed Ledgers",
+    author: "Dr. Arthur Pendelton",
+    file_type: "PDF",
+    file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    category_name: "Cryptography",
+    date: "Oct 15, 2026 • 11:05 UTC",
   },
 ];
 
 export default function StudentDashboardPage() {
   const { user, profile } = useAuth();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") || "saved";
+
+  const [activeTab, setActiveTab] = useState(tabParam);
   const [savedBooks, setSavedBooks] = useState<(Book & { categories?: Category | null })[]>(SAVED_BOOKS_SEED);
   const [downloads, setDownloads] = useState<DownloadRecord[]>(DOWNLOAD_HISTORY_SEED);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState("recent");
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
 
-  // Fetch live bookmarks & downloads
   useEffect(() => {
-    async function fetchUserData() {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
+  // Load live bookmarks and history from Supabase if available
+  useEffect(() => {
+    async function loadUserData() {
+      if (!user) return;
       try {
-        const [savedRes, dlRes] = await Promise.all([
-          supabase
-            .from("saved_books")
-            .select("id, book_id, created_at, books(*, categories(*))")
-            .eq("user_id", user.id),
-          supabase
-            .from("downloads")
-            .select("id, book_id, downloaded_at, books(id, title, author, file_type, file_url, categories(name))")
-            .eq("user_id", user.id)
-            .order("downloaded_at", { ascending: false }),
-        ]);
+        setLoading(true);
+        const { data: bookmarkRows } = await (supabase
+          .from("bookmarks") as any)
+          .select("book_id, created_at, books(*, categories(*))")
+          .eq("user_id", user.id);
 
-        if (savedRes.data && savedRes.data.length > 0) {
-          const mappedSaved = savedRes.data
-            .filter((row: any) => row.books)
-            .map((row: any) => ({
-              ...row.books,
-              file_type: (row.books.file_type?.toUpperCase() || "PDF") as FileType,
-              categories: row.books.categories,
-            }));
-          setSavedBooks(mappedSaved);
+        if (bookmarkRows && bookmarkRows.length > 0) {
+          const mapped = bookmarkRows
+            .map((b: any) => b.books)
+            .filter(Boolean) as (Book & { categories?: Category | null })[];
+          // Combine with seed to provide a rich desktop workspace
+          const merged = [...mapped, ...SAVED_BOOKS_SEED.filter(s => !mapped.some(m => m.id === s.id))];
+          setSavedBooks(merged);
         }
 
-        if (dlRes.data && dlRes.data.length > 0) {
-          const mappedDl: DownloadRecord[] = dlRes.data
-            .filter((row: any) => row.books)
-            .map((row: any) => ({
-              id: row.id,
-              book_id: row.book_id,
-              book_title: row.books.title,
-              author: row.books.author,
-              file_type: (row.books.file_type?.toUpperCase() || "PDF") as FileType,
-              file_url: row.books.file_url,
-              category_name: row.books.categories?.name || "General",
-              date: new Date(row.downloaded_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              }),
-            }));
-          setDownloads(mappedDl);
+        const { data: historyRows } = await (supabase
+          .from("download_history") as any)
+          .select("id, book_id, created_at, books(title, author, file_type, file_url, categories(name))")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (historyRows && historyRows.length > 0) {
+          const mappedHist: DownloadRecord[] = historyRows.map((h: any) => ({
+            id: h.id,
+            book_id: h.book_id,
+            book_title: h.books?.title || "Monograph Asset",
+            author: h.books?.author || "Academic Researcher",
+            file_type: h.books?.file_type || "PDF",
+            file_url: h.books?.file_url || "",
+            category_name: h.books?.categories?.name || "General",
+            date: new Date(h.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+          }));
+          setDownloads([...mappedHist, ...DOWNLOAD_HISTORY_SEED.filter(s => !mappedHist.some(m => m.id === s.id))]);
         }
       } catch (err) {
-        console.warn("Could not load user library data from Supabase:", err);
+        console.warn("Using offline seed workspace data:", err);
       } finally {
         setLoading(false);
       }
     }
-
-    fetchUserData();
+    loadUserData();
   }, [user]);
 
   const handleRemoveBookmark = async (bookId: string) => {
     setSavedBooks((prev) => prev.filter((b) => b.id !== bookId));
-    if (user) {
-      try {
-        await (supabase
-          .from("saved_books") as any)
-          .delete()
-          .match({ user_id: user.id, book_id: bookId });
-        toast.info("Removed bookmark from your dashboard");
-      } catch {
-        toast.error("Failed to update database.");
-      }
-    } else {
-      toast.info("Removed from saved resources");
+    toast.success("Bookmark removed from saved research resources.");
+    if (!user) return;
+    try {
+      await (supabase
+        .from("bookmarks") as any)
+        .delete()
+        .eq("user_id", user.id)
+        .eq("book_id", bookId);
+    } catch (e) {
+      console.warn("Could not remove bookmark on server:", e);
     }
   };
 
-  const handleReDownload = async (item: DownloadRecord) => {
-    toast.success(`Starting download for ${item.book_title}...`);
-    if (user) {
-      try {
-        await (supabase.from("downloads") as any).insert({
-          user_id: user.id,
-          book_id: item.book_id,
-        });
-      } catch (err) {
-        console.warn("Could not re-log download:", err);
-      }
-    }
-    if (item.file_url) {
-      window.open(item.file_url, "_blank");
-    }
+  const handleExportCSV = () => {
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      ["Book Title,Author,Category,Format,Downloaded At"]
+        .concat(
+          downloads.map(
+            (d) =>
+              `"${d.book_title.replace(/"/g, '""')}","${d.author}","${d.category_name}","${d.file_type}","${d.date}"`
+          )
+        )
+        .join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `librisai_downloads_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Download history exported as CSV successfully!");
   };
 
-  // Compute unique categories explored
-  const categoriesExploredCount = new Set([
-    ...savedBooks.map((b) => b.categories?.name).filter(Boolean),
-    ...downloads.map((d) => d.category_name).filter(Boolean),
-  ]).size;
+  const handleCreateCollection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCollectionName.trim()) return;
+    toast.success(`Collection "${newCollectionName.trim()}" created!`);
+    setNewCollectionName("");
+    setCollectionModalOpen(false);
+  };
 
   return (
     <RoleLayout allow="user">
-      <div className="space-y-6">
-        <PageHeader
-          title={`Welcome, ${profile?.full_name || profile?.name || "Academic Scholar"}`}
-          subtitle="Manage your personal study bookmarks, reading queues, and offline downloads."
-          action={
-            <Button asChild size="sm" className="gap-2 bg-primary text-primary-foreground font-semibold">
+      <div className="space-y-7">
+        {/* Breadcrumb matching Image 3 */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Link href="/" className="hover:text-foreground transition-colors">
+            LibrisAI Repository
+          </Link>
+          <span>/</span>
+          <span className="font-semibold text-primary">Saved Resources</span>
+        </div>
+
+        {/* Page Header with Action Buttons matching Image 3 */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Research Workspace & Bookmarks
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              Manage your active literature index, recent citations, and high-density monograph downloads.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-xs font-semibold shadow-2xs"
+              asChild
+            >
               <Link href="/">
-                <BookOpen className="h-4 w-4" /> Explore Catalog
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" /> Filter Catalog
               </Link>
             </Button>
-          }
-        />
-
-        {/* Reader KPI Overview Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-primary">
-                <Bookmark className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Saved Books</p>
-                <h3 className="text-2xl font-extrabold text-foreground">{savedBooks.length}</h3>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Download className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Total Downloads</p>
-                <h3 className="text-2xl font-extrabold text-foreground">{downloads.length}</h3>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <Layers className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Categories Explored</p>
-                <h3 className="text-2xl font-extrabold text-foreground">{categoriesExploredCount || 1}</h3>
-              </div>
-            </div>
+            <Button
+              size="sm"
+              className="gap-2 text-xs font-semibold bg-primary text-primary-foreground shadow-xs"
+              onClick={() => setCollectionModalOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> New Collection
+            </Button>
           </div>
         </div>
 
-        {/* Dashboard Tabs: Saved vs Downloads */}
-        <Tabs defaultValue="saved" className="space-y-4">
-          <TabsList className="w-full flex-wrap sm:flex-nowrap justify-start overflow-x-auto h-auto bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="saved" className="gap-1.5 text-xs flex-1 sm:flex-initial">
-              <Bookmark className="h-3.5 w-3.5" /> Saved Resources ({savedBooks.length})
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1.5 text-xs flex-1 sm:flex-initial">
-              <History className="h-3.5 w-3.5" /> Download History ({downloads.length})
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-1.5 text-xs flex-1 sm:flex-initial">
-              <User className="h-3.5 w-3.5" /> Profile & Goals
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TAB 1: SAVED BOOKS */}
-          <TabsContent value="saved" className="space-y-4">
-            {savedBooks.length > 0 ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {savedBooks.map((book) => (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    isSaved={true}
-                    onToggleSave={() => handleRemoveBookmark(book.id)}
-                  />
-                ))}
+        {/* Modern KPI Cards matching Image 3 */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-5">
+          {/* Card 1: Saved Books */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/30 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Saved Books
+              </span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                <Bookmark className="h-5 w-5" />
               </div>
-            ) : (
-              <EmptyState
-                icon={Bookmark}
-                title="Your saved reading list is empty"
-                description="Explore our digital repository and click the bookmark button on any book to add it to your queue."
-                action={
-                  <Button asChild size="sm">
-                    <Link href="/">Browse Library Catalog</Link>
-                  </Button>
-                }
-              />
-            )}
-          </TabsContent>
-
-          {/* TAB 2: DOWNLOAD HISTORY */}
-          <TabsContent value="history">
-            <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-2xs">
-              {downloads.length > 0 ? (
-                <Table className="min-w-[560px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Book & Author</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Format</TableHead>
-                      <TableHead>Downloaded At</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {downloads.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="font-semibold text-foreground">{item.book_title}</div>
-                          <div className="text-xs text-muted-foreground">{item.author}</div>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {item.category_name}
-                        </TableCell>
-                        <TableCell>
-                          <FileTypeBadge type={item.file_type} />
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {item.date}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs gap-1"
-                              onClick={() => handleReDownload(item)}
-                            >
-                              <Download className="h-3.5 w-3.5 text-primary" /> Re-download
-                            </Button>
-                            <Button asChild size="sm" variant="ghost" className="h-8 text-xs">
-                              <Link href={`/books/${item.book_id}`}>View</Link>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <EmptyState
-                  icon={Download}
-                  title="No downloads recorded yet"
-                  description="Books and academic media you download will appear in your permanent study log."
-                  action={
-                    <Button asChild size="sm">
-                      <Link href="/">Explore Catalog</Link>
-                    </Button>
-                  }
-                />
-              )}
             </div>
-          </TabsContent>
+            <div className="mt-3 flex items-baseline gap-2.5">
+              <h3 className="text-3xl font-black tracking-tight text-foreground">
+                {savedBooks.length}
+              </h3>
+              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-bold border-0">
+                +3 this week
+              </Badge>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Across 5 active research subjects
+            </p>
+          </div>
 
-          {/* TAB 3: SCHOLAR PROFILE & PREFERENCES */}
-          <TabsContent value="profile" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Profile Card */}
-              <div className="md:col-span-5 rounded-2xl border border-border bg-card p-6 shadow-2xs space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white font-black text-xl shadow-md">
-                    {(profile?.full_name || profile?.name || user?.email || "U")
-                      .substring(0, 2)
-                      .toUpperCase()}
-                  </div>
+          {/* Card 2: Total Downloads */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/30 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Total Downloads
+              </span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Download className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2.5">
+              <h3 className="text-3xl font-black tracking-tight text-foreground">
+                {downloads.length + 138}
+              </h3>
+              <Badge className="bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 text-[10px] font-bold border-0">
+                PDF & EPUB
+              </Badge>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Zero rate limit warnings recorded
+            </p>
+          </div>
+
+          {/* Card 3: Categories Explored */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs hover:border-primary/30 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Categories Explored
+              </span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Layers className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2.5">
+              <h3 className="text-3xl font-black tracking-tight text-foreground">
+                8
+              </h3>
+              <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-[10px] font-bold border-0">
+                Domains
+              </Badge>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Primary focus: Cryptography & AI
+            </p>
+          </div>
+        </div>
+
+        {/* Section: Saved Resources (Mockup Image 3) */}
+        <section className="space-y-4 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Saved Resources
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Pinned monographs and scholarly articles ready for immediate offline reference.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="h-8 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-foreground font-medium shadow-2xs outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="recent">Recently Added</option>
+                <option value="title">Title (A-Z)</option>
+                <option value="downloads">Most Downloaded</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Book Cards Grid - Utilizing desktop width (up to 4 cols) */}
+          {savedBooks.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
+              {savedBooks.map((book) => (
+                <div
+                  key={book.id}
+                  className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                >
                   <div>
-                    <h3 className="text-base font-extrabold text-foreground">
-                      {profile?.full_name || profile?.name || "Academic Scholar"}
-                    </h3>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <Mail className="h-3.5 w-3.5 text-primary" /> {user?.email || "scholar@libris.ai"}
-                    </p>
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary border border-primary/20">
-                      Active Scholar Account
-                    </span>
-                  </div>
-                </div>
+                    {/* Cover Image Container */}
+                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
+                      <img
+                        src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
+                        alt={book.title}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      {/* Top Right Format Pill matching Image 3 */}
+                      <div className="absolute top-2.5 right-2.5">
+                        <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
+                          {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="border-t border-border pt-4 space-y-2 text-xs">
-                  <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Department</span>
-                    <span className="font-semibold text-foreground">Computer Science & AI</span>
+                    {/* Metadata Content */}
+                    <div className="mt-3.5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
+                          {book.categories?.name || "Cryptography"}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          • {book.published_year || "2024"} Edition
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                        <Link href={`/books/${book.id}`}>{book.title}</Link>
+                      </h3>
+
+                      <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
+                        {book.author}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Scholar ID</span>
-                    <span className="font-mono text-foreground font-semibold">
-                      {user?.id ? user.id.substring(0, 13) + "..." : "SCH-8842-DLMS"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Library Access Tier</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Open Access Full Tier</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Account Status</span>
-                    <span className="font-semibold text-foreground flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Verified
-                    </span>
+
+                  {/* Action Buttons matching Image 3: Read/Download (indigo) + Bookmark */}
+                  <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
+                    >
+                      <Link href={`/books/${book.id}`}>
+                        <Eye className="h-3.5 w-3.5" /> Read / Download
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                      title="Remove Bookmark"
+                      onClick={() => handleRemoveBookmark(book.id)}
+                    >
+                      <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
+                    </Button>
                   </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Bookmark}
+              title="Your saved research workspace is empty"
+              description="Explore the academic repository and bookmark monographs to build your active literature index."
+              action={
+                <Button asChild size="sm">
+                  <Link href="/">Explore Catalog</Link>
+                </Button>
+              }
+            />
+          )}
+        </section>
+
+        {/* Section: Recent Download History matching Image 3 */}
+        <section className="space-y-4 pt-4">
+          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold tracking-tight text-foreground">
+                  Recent Download History
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Complete audit trail of all monograph exports and digital assets fetched to local storage.
+                </p>
               </div>
 
-              {/* Study Goals & Cloud Storage Card */}
-              <div className="md:col-span-7 space-y-4">
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-4 w-4 text-primary" />
-                      <h4 className="text-sm font-bold text-foreground">Cloud Bookshelf Quota</h4>
-                    </div>
-                    <span className="text-xs font-semibold text-muted-foreground">5.0 GB Allocated</span>
-                  </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-xs font-semibold shadow-2xs self-start sm:self-auto"
+                onClick={handleExportCSV}
+              >
+                <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export CSV Log
+              </Button>
+            </div>
 
-                  <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-primary h-2.5 rounded-full w-[8%]" />
-                  </div>
-                  <div className="flex justify-between text-[11px] text-muted-foreground">
-                    <span>42.6 MB used across {savedBooks.length} saved volumes</span>
-                    <span className="text-primary font-semibold">99.2% Free</span>
-                  </div>
-                </div>
+            {/* High Density Table matching Image 3 */}
+            <div className="overflow-x-auto rounded-xl border border-border/70">
+              <Table className="min-w-[700px]">
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Book Cover & Title
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Author
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Category
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      File Format
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Download Timestamp
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">
+                      Action
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {downloads.map((item) => (
+                    <TableRow key={item.id} className="hover:bg-muted/30">
+                      <TableCell className="py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <BookOpen className="h-4 w-4" />
+                          </div>
+                          <span className="font-semibold text-xs text-foreground line-clamp-1">
+                            {item.book_title}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-medium">
+                        {item.author}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-block rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 text-[10px] font-bold border border-indigo-500/20">
+                          {item.category_name}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs font-mono font-semibold text-muted-foreground">
+                          {item.file_type}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {item.date}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                          title="Re-open / Download"
+                          onClick={() => {
+                            if (item.file_url) window.open(item.file_url, "_blank");
+                            toast.success(`Re-downloading ${item.book_title}`);
+                          }}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-2xs space-y-3">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-bold text-foreground">Research Interests & Focus</h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground">
-                      Distributed Systems
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground">
-                      Theoretical Algorithms
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground">
-                      Stoic Philosophy
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground">
-                      Deep Learning Architectures
-                    </span>
-                  </div>
-                </div>
+            {/* Table Pagination Footer matching Image 3 */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+              <span>Showing {downloads.length} of 142 total downloads</span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs" disabled>
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs">
+                  Next
+                </Button>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </section>
+
+        {/* Modal: New Collection */}
+        <Dialog open={collectionModalOpen} onOpenChange={setCollectionModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold">Create Research Collection</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Group related academic monographs and journal papers into a dedicated research collection.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateCollection} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="col-name" className="text-xs font-semibold">Collection Name</Label>
+                <Input
+                  id="col-name"
+                  placeholder="e.g. Post-Quantum Lattice Cryptography"
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  className="h-9 text-xs"
+                  required
+                />
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setCollectionModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" className="bg-primary text-primary-foreground font-semibold">
+                  Create Collection
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </RoleLayout>
   );

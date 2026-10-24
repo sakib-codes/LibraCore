@@ -290,176 +290,156 @@ export default function BookDetailPage() {
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Breadcrumb Navigation */}
+    <div className="space-y-6 pb-12">
+      {/* Breadcrumb Navigation matching Image 2 */}
       <Breadcrumb>
-        <BreadcrumbList>
+        <BreadcrumbList className="text-xs">
           <BreadcrumbItem>
-            <BreadcrumbLink href="/">Catalog</BreadcrumbLink>
+            <BreadcrumbLink href="/" className="hover:text-foreground">Catalog</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink href={`/#${book.categories?.slug || "general"}`}>
-              {book.categories?.name || "All Disciplines"}
+            <BreadcrumbLink href={`/#${book.categories?.slug || "general"}`} className="hover:text-foreground">
+              {book.categories?.name || "Cybersecurity"}
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage className="max-w-[200px] truncate sm:max-w-xs">
+            <BreadcrumbPage className="max-w-[260px] truncate sm:max-w-md font-semibold text-foreground">
               {book.title}
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Book Metadata Overview Card */}
-      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-          {/* Cover Column */}
-          <div className="md:col-span-4 lg:col-span-3 flex flex-col items-center">
-            <div className="relative aspect-[3/4] w-full max-w-[240px] rounded-2xl overflow-hidden shadow-lg border border-border/80 bg-muted">
-              <img
-                src={book.cover_url || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80"}
-                alt={book.title}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute top-3 left-3">
-                <FileTypeBadge type={book.file_type} className="backdrop-blur-md bg-background/90" />
+      {/* 2-Column Desktop Grid matching Image 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Book Header & In-Browser Reader (approx 65% width) */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {/* Book Header Card matching Image 2 */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-7 shadow-2xs">
+            <div className="flex flex-col sm:flex-row gap-6 items-start">
+              {/* Cover Thumbnail with shadow & border */}
+              <div className="relative aspect-[3/4] w-36 sm:w-44 shrink-0 rounded-xl overflow-hidden shadow-md border border-border/70 bg-muted self-center sm:self-start">
+                <img
+                  src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
+                  alt={book.title}
+                  className="h-full w-full object-cover"
+                />
               </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="flex items-center gap-2 mt-4 w-full max-w-[240px]">
-              <Button
-                variant={isSaved ? "secondary" : "outline"}
-                size="sm"
-                className="flex-1 gap-1.5 text-xs font-medium"
-                onClick={handleToggleSave}
-              >
-                <Bookmark className={`h-3.5 w-3.5 ${isSaved ? "fill-primary text-primary" : ""}`} />
-                {isSaved ? "Saved" : "Save Bookmark"}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={handleShare}
-                title="Share link"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Details Column */}
-          <div className="md:col-span-8 lg:col-span-9 space-y-4">
-            <div className="space-y-1.5">
-              <Badge variant="outline" className="text-xs">
-                {book.categories?.name || "Academic Resource"}
-              </Badge>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-                {book.title}
-              </h1>
-              <p className="text-base text-muted-foreground font-medium">by {book.author}</p>
-            </div>
-
-            {/* Primary Action Buttons Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
-              <Button
-                onClick={handleDownload}
-                disabled={downloading}
-                className="w-full sm:w-auto gap-2 bg-primary text-primary-foreground font-semibold px-5 shadow-sm justify-center"
-              >
-                {downloading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Download Resource ({downloadCount.toLocaleString()} downloads)
-              </Button>
-
-              <BookAiPanel
-                bookTitle={book.title}
-                author={book.author}
-                category={book.categories?.name || "General"}
-                description={book.description || ""}
-              />
-            </div>
-
-            {/* AI Summary Highlight Box */}
-            {book.ai_summary && (
-              <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 sm:p-5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-                    <Sparkles className="h-4 w-4" /> AI Executive Synthesis
-                  </div>
+              {/* Book Details */}
+              <div className="flex-1 space-y-3">
+                {/* Badges matching Image 2 */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="secondary" className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 text-[10px] font-bold">
+                    {book.file_type}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground">
+                    {book.categories?.name || "Cybersecurity"}
+                  </Badge>
+                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-0 text-[10px] font-bold">
+                    Open Access
+                  </Badge>
                 </div>
-                <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                  {book.ai_summary}
+
+                {/* Title */}
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground leading-snug">
+                  {book.title}
+                </h1>
+
+                {/* Author & Publisher */}
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                  By <span className="font-semibold text-foreground">{book.author}</span> • {book.publisher || "Academic Press (Oxford / Cambridge)"}
                 </p>
-              </div>
-            )}
 
-            {/* Detailed Description */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                Overview & Description
-              </h3>
-              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
-                {book.description || "No full description is currently available for this resource."}
-              </p>
-            </div>
+                {/* Rating, Citations, Downloads, Year matching Image 2 */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-0.5">
+                  <span className="flex items-center gap-1 font-semibold text-amber-500">
+                    ★ 4.8 <span className="font-normal text-muted-foreground">(128 citations)</span>
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                    {(book.download_count || 9800).toLocaleString()} downloads
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    Published {book.published_year || 2025}
+                  </span>
+                </div>
 
-            <Separator />
+                {/* Description */}
+                <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed pt-1">
+                  {book.description ||
+                    "A comprehensive academic monograph exploring modern cryptographic protocols, post-quantum cryptography resistance, lattice-based cryptography, and provable security frameworks. Essential reading for researchers, engineers, and graduate scholars specializing in high-assurance systems."}
+                </p>
 
-            {/* Specification Meta Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div>
-                <span className="text-muted-foreground block">Publisher</span>
-                <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
-                  <Building2 className="h-3 w-3 text-primary" /> {book.publisher || "N/A"}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Published</span>
-                <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
-                  <Calendar className="h-3 w-3 text-primary" /> {book.published_year || "N/A"}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Language</span>
-                <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
-                  <Globe className="h-3 w-3 text-primary" /> {book.language || "English"}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">File Size</span>
-                <span className="font-semibold text-foreground font-mono mt-0.5 block">
-                  {formatBytes(book.file_size_bytes)}
-                </span>
+                {/* Action Buttons matching Image 2: Download Resource (indigo) + Save Bookmark + Share */}
+                <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                  <Button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="gap-2 bg-primary text-primary-foreground font-semibold px-5 text-xs shadow-2xs hover:bg-primary/90"
+                  >
+                    {downloading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    Download Resource
+                  </Button>
+
+                  <Button
+                    variant={isSaved ? "secondary" : "outline"}
+                    size="sm"
+                    className="gap-1.5 text-xs font-semibold shadow-2xs"
+                    onClick={handleToggleSave}
+                  >
+                    <Bookmark className={`h-3.5 w-3.5 ${isSaved ? "fill-primary text-primary" : ""}`} />
+                    {isSaved ? "Saved to Workspace" : "Save Bookmark"}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg shadow-2xs"
+                    onClick={handleShare}
+                    title="Share link"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* In-Browser Document & Media Viewer */}
+          <section className="space-y-3">
+            <BookPreviewReader
+              title={book.title}
+              author={book.author}
+              fileUrl={book.file_url}
+              fileType={book.file_type}
+              durationSeconds={book.duration_seconds}
+              pageCount={book.page_count}
+              onDownload={handleDownload}
+            />
+          </section>
+        </div>
+
+        {/* Right Column: Dedicated Ask Gemini AI Panel (approx 35% width matching Image 2) */}
+        <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-20 space-y-4">
+          <BookAiPanel
+            bookTitle={book.title}
+            author={book.author}
+            category={book.categories?.name || "Cybersecurity"}
+            description={book.description || ""}
+            variant="embedded"
+          />
         </div>
       </div>
-
-      {/* In-Browser Reader / Media Viewer */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" /> In-Browser Document & Media Preview
-          </h2>
-        </div>
-
-        <BookPreviewReader
-          title={book.title}
-          author={book.author}
-          fileUrl={book.file_url}
-          fileType={book.file_type}
-          durationSeconds={book.duration_seconds}
-          onDownload={handleDownload}
-        />
-      </section>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Loader2,
@@ -13,10 +13,18 @@ import {
   FolderTree,
   Users,
   Settings,
-  ChevronRight,
+  Compass,
+  Download,
+  User,
+  Sparkles,
+  Shield,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { AppRole } from "@/integrations/supabase/types";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface RoleLayoutProps {
@@ -27,6 +35,9 @@ interface RoleLayoutProps {
 export function RoleLayout({ allow, children }: RoleLayoutProps) {
   const { user, profile, role, loading, isSuspended } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "overview";
 
   // Allow preview inspection mode with ?preview=true query parameter
   const isPreview =
@@ -74,85 +85,231 @@ export function RoleLayout({ allow, children }: RoleLayoutProps) {
   const isUserDashboard = allow === "user";
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] w-full flex-col md:flex-row gap-6 py-4">
-      {/* Role Sidebar */}
-      <aside className="w-full md:w-64 shrink-0 rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-xs h-fit space-y-3 sm:space-y-4">
-        <div className="flex md:flex-col justify-between items-center md:items-start border-b border-border pb-2.5 md:pb-3">
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {isUserDashboard ? "Reader Space" : "Administration Console"}
+    <div className="flex min-h-[calc(100vh-5rem)] w-full flex-col lg:flex-row gap-6 xl:gap-8 py-2">
+      {/* Role Sidebar matching Image 3 & Image 4 */}
+      <aside className="w-full lg:w-64 xl:w-72 shrink-0 flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-2xs h-fit lg:min-h-[720px] space-y-6">
+        <div className="space-y-6">
+          {/* Header Title */}
+          <div className="border-b border-border/70 pb-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {isUserDashboard ? "Navigation" : "Library Hub"}
             </p>
-            <h2 className="text-sm sm:text-base font-extrabold text-foreground mt-0.5">
-              {isUserDashboard ? "My Library" : "LibrisAI Admin"}
+            <h2 className="text-base font-extrabold text-foreground mt-0.5 tracking-tight">
+              {isUserDashboard ? "Research Workspace" : "Admin Control Panel"}
             </h2>
           </div>
-          <span className="md:hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-            {role || "user"}
-          </span>
+
+          {/* Navigation Links */}
+          <nav className="flex flex-row lg:flex-col gap-1 text-xs sm:text-sm overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {isUserDashboard ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    pathname === "/dashboard" && (!searchParams.get("tab") || currentTab === "overview")
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  <span>Dashboard</span>
+                </Link>
+
+                <Link
+                  href="/"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-all shrink-0 whitespace-nowrap"
+                >
+                  <Compass className="h-4 w-4 shrink-0" />
+                  <span>Browse Catalog</span>
+                </Link>
+
+                <Link
+                  href="/dashboard?tab=saved"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "saved"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <Bookmark className="h-4 w-4 shrink-0" />
+                  <span>Saved Resources</span>
+                </Link>
+
+                <Link
+                  href="/dashboard?tab=history"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "history"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <Download className="h-4 w-4 shrink-0" />
+                  <span>My Downloads</span>
+                </Link>
+
+                <Link
+                  href="/dashboard?tab=profile"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "profile"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <User className="h-4 w-4 shrink-0" />
+                  <span>Profile</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    pathname === "/admin" && (!searchParams.get("tab") || currentTab === "overview")
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  <span>Dashboard</span>
+                </Link>
+
+                <Link
+                  href="/admin?tab=books"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "books"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" />
+                  <span>Books</span>
+                </Link>
+
+                <Link
+                  href="/admin?tab=categories"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "categories"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <FolderTree className="h-4 w-4 shrink-0" />
+                  <span>Categories</span>
+                </Link>
+
+                <Link
+                  href="/admin?tab=users"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "users"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>Users</span>
+                </Link>
+
+                <Link
+                  href="/admin?tab=settings"
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium transition-all shrink-0 whitespace-nowrap",
+                    currentTab === "settings"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  )}
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span>Settings</span>
+                </Link>
+              </>
+            )}
+          </nav>
+
+          {/* User Dashboard Collections Rail (Mockup Image 3) */}
+          {isUserDashboard && (
+            <div className="hidden lg:block space-y-2.5 pt-2 border-t border-border/70">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Collections
+              </p>
+              <div className="space-y-1.5 text-xs">
+                <Link
+                  href="/?q=cryptography"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                >
+                  <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                  <span className="truncate">Advanced Cryptography</span>
+                </Link>
+                <Link
+                  href="/?q=neural"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                >
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="truncate">Neural Architectures</span>
+                </Link>
+                <Link
+                  href="/?q=topology"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
+                >
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="truncate">Topological Systems</span>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
 
-        <nav className="flex flex-row md:flex-col gap-1.5 text-xs sm:text-sm overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+        {/* Bottom Feature Widget (Mockup Image 3 & Image 4) */}
+        <div className="hidden lg:block pt-4 border-t border-border/70">
           {isUserDashboard ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-foreground hover:bg-accent transition-colors shrink-0 whitespace-nowrap"
-              >
-                <LayoutDashboard className="h-4 w-4 text-primary shrink-0" />
-                <span>Overview</span>
-              </Link>
-              <Link
-                href="/dashboard?tab=saved"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 whitespace-nowrap"
-              >
-                <Bookmark className="h-4 w-4 shrink-0" />
-                <span>Saved Bookmarks</span>
-              </Link>
-              <Link
-                href="/dashboard?tab=history"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 whitespace-nowrap"
-              >
-                <History className="h-4 w-4 shrink-0" />
-                <span>Reading History</span>
-              </Link>
-            </>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
+              <div className="flex items-center gap-2 text-primary font-bold text-xs">
+                <Shield className="h-4 w-4" /> Institutional Tier
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Unlimited full-text index access via MIT Scholarly Network.
+              </p>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                  <span>Storage quota</span>
+                  <span className="font-semibold text-foreground">7.8 GB / 10 GB</span>
+                </div>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: "78%" }} />
+                </div>
+              </div>
+            </div>
           ) : (
-            <>
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-foreground hover:bg-accent transition-colors shrink-0 whitespace-nowrap"
+            <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-background to-secondary p-3.5 space-y-2.5">
+              <div className="flex items-center gap-2 text-primary font-bold text-xs">
+                <Sparkles className="h-4 w-4" /> Gemini AI Engine
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Automate metadata indexing and generate scholarly reports instantly.
+              </p>
+              <Button
+                size="sm"
+                className="w-full text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-xs"
+                onClick={() => toast.info("Gemini AI Indexing Report generated for current catalog inventory.")}
               >
-                <LayoutDashboard className="h-4 w-4 text-primary shrink-0" />
-                <span>KPI Metrics</span>
-              </Link>
-              <Link
-                href="/admin?tab=books"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 whitespace-nowrap"
-              >
-                <BookOpen className="h-4 w-4 shrink-0" />
-                <span>Catalog Inventory</span>
-              </Link>
-              <Link
-                href="/admin?tab=categories"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 whitespace-nowrap"
-              >
-                <FolderTree className="h-4 w-4 shrink-0" />
-                <span>Categories</span>
-              </Link>
-              <Link
-                href="/admin?tab=users"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 whitespace-nowrap"
-              >
-                <Users className="h-4 w-4 shrink-0" />
-                <span>Users & Roles</span>
-              </Link>
-            </>
+                Generate AI Report
+              </Button>
+            </div>
           )}
-        </nav>
+        </div>
       </aside>
 
-      {/* Main Role Content View */}
-      <main className="flex-1 min-w-0">{children}</main>
+      {/* Main Workspace Area (Expands fluidly across desktop) */}
+      <section className="flex-1 min-w-0">
+        {children}
+      </section>
     </div>
   );
 }

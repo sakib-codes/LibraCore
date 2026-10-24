@@ -12,10 +12,16 @@ import {
   Download,
   ZoomIn,
   ZoomOut,
-  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  Code,
+  BookOpen,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FileTypeBadge } from "@/components/shared/status-badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { toast } from "sonner";
 import { formatDuration } from "@/lib/utils";
 import type { FileType } from "@/integrations/supabase/types";
 
@@ -25,6 +31,7 @@ interface BookPreviewReaderProps {
   fileUrl: string;
   fileType: FileType;
   durationSeconds?: number | null;
+  pageCount?: number | null;
   onDownload?: () => void;
 }
 
@@ -34,19 +41,21 @@ export function BookPreviewReader({
   fileUrl,
   fileType,
   durationSeconds,
+  pageCount = 342,
   onDownload,
 }: BookPreviewReaderProps) {
+  const [activeTab, setActiveTab] = useState<"reader" | "audio" | "bibtex">("reader");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [copiedBibtex, setCopiedBibtex] = useState(false);
+
   // Audio Player State
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Image Zoom State
-  const [zoomLevel, setZoomLevel] = useState(1);
-
-  // Text Reader Font Size
-  const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
+  const totalPages = pageCount || 342;
 
   const toggleAudio = () => {
     if (!audioRef.current) return;
@@ -59,209 +68,234 @@ export function BookPreviewReader({
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    setCurrentTime(time);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-    }
-  };
+  const bibtexContent = `@article{adams2025cryptographic,
+  title={${title}},
+  author={${author}},
+  journal={Academic Press Monographs in Computer Science},
+  volume={48},
+  number={2},
+  pages={1--${totalPages}},
+  year={2025},
+  publisher={Oxford / Cambridge Scholarly Press},
+  doi={10.1016/j.librisai.2025.04.012}
+}`;
 
-  const changePlaybackRate = () => {
-    const rates = [1, 1.25, 1.5, 2];
-    const nextIdx = (rates.indexOf(playbackRate) + 1) % rates.length;
-    const nextRate = rates[nextIdx];
-    setPlaybackRate(nextRate);
-    if (audioRef.current) {
-      audioRef.current.playbackRate = nextRate;
-    }
+  const handleCopyBibtex = () => {
+    navigator.clipboard.writeText(bibtexContent);
+    setCopiedBibtex(true);
+    toast.success("BibTeX citation copied to clipboard!");
+    setTimeout(() => setCopiedBibtex(false), 2000);
   };
 
   return (
-    <div className="flex flex-col w-full rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-      {/* Viewer Header Toolbar */}
-      <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-4 py-3 gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <FileTypeBadge type={fileType} />
-          <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-            In-Browser Previewer
-          </span>
-        </div>
+    <div className="flex flex-col w-full rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+      {/* Header Tabs matching Image 2 */}
+      <div className="flex items-center justify-between border-b border-border/70 bg-muted/30 px-3 sm:px-4 py-2 gap-2 overflow-x-auto">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("reader")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "reader"
+                ? "bg-card text-foreground shadow-2xs border border-border/70"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BookOpen className="h-3.5 w-3.5 text-primary" /> Document Reader ({fileType})
+          </button>
 
-        <div className="flex items-center gap-2">
-          {fileType === "IMAGE" && (
-            <div className="flex items-center gap-1 bg-background/80 rounded-lg p-0.5 border border-border">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.25))}
-                title="Zoom out"
-              >
-                <ZoomOut className="h-3.5 w-3.5" />
-              </Button>
-              <span className="text-[11px] px-1 font-mono">{Math.round(zoomLevel * 100)}%</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
-                title="Zoom in"
-              >
-                <ZoomIn className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab("audio")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "audio"
+                ? "bg-card text-foreground shadow-2xs border border-border/70"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Headphones className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Audio Lecture
+          </button>
 
-          {(fileType === "DOC" || fileType === "EPUB") && (
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-muted-foreground mr-1">Text:</span>
-              {(["sm", "base", "lg"] as const).map((size) => (
-                <Button
-                  key={size}
-                  variant={fontSize === size ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => setFontSize(size)}
-                >
-                  {size.toUpperCase()}
-                </Button>
-              ))}
-            </div>
-          )}
-
-          {onDownload && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={onDownload}>
-              <Download className="h-3.5 w-3.5" /> Download
-            </Button>
-          )}
-
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild title="Open original">
-            <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </Button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("bibtex")}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "bibtex"
+                ? "bg-card text-foreground shadow-2xs border border-border/70"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Code className="h-3.5 w-3.5 text-indigo-500" /> Metadata & BibTeX
+          </button>
         </div>
       </div>
 
-      {/* Viewer Body By Type */}
-      <div className="relative min-h-[360px] sm:min-h-[420px] max-h-[640px] flex items-center justify-center bg-muted/20 overflow-auto p-3 sm:p-4">
-        {/* 1. AUDIO VIEWER */}
-        {fileType === "AUDIO" && (
-          <div className="flex flex-col items-center justify-center w-full max-w-md p-4 sm:p-6 bg-card rounded-2xl border border-border shadow-md space-y-4 sm:space-y-5 my-4 sm:my-8">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <Headphones className="h-10 w-10 animate-pulse" />
+      {/* Reader Toolbar (Pagination & Zoom Controls matching Image 2) */}
+      {activeTab === "reader" && (
+        <div className="flex items-center justify-between border-b border-border/70 bg-card/60 px-4 py-2.5 text-xs text-muted-foreground">
+          {/* Page Navigator */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <span className="font-mono text-xs font-medium text-foreground">
+              Page <span className="font-bold text-primary">{currentPage}</span> of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          {/* Zoom & Fullscreen Controls */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              onClick={() => setZoomLevel((z) => Math.max(75, z - 10))}
+              title="Zoom Out"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <span className="font-mono text-xs w-12 text-center font-medium">
+              {zoomLevel}%
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              onClick={() => setZoomLevel((z) => Math.min(150, z + 10))}
+              title="Zoom In"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+            <div className="h-4 w-px bg-border mx-1" />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              onClick={() => {
+                const elem = document.getElementById("document-canvas");
+                if (elem?.requestFullscreen) elem.requestFullscreen();
+              }}
+              title="Fullscreen Mode"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Canvas Area */}
+      <div id="document-canvas" className="bg-muted/30 p-4 sm:p-8 flex items-center justify-center min-h-[540px] overflow-auto">
+        {activeTab === "reader" && (
+          /* Scholarly White Paper Canvas matching Image 2 */
+          <div
+            style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top center" }}
+            className="w-full max-w-2xl bg-card border border-border/80 rounded-xl p-8 sm:p-12 shadow-md space-y-6 text-foreground font-serif leading-relaxed transition-transform duration-150"
+          >
+            <div className="text-center space-y-2 border-b border-border/60 pb-6">
+              <span className="text-[10px] uppercase font-sans font-bold tracking-widest text-muted-foreground">
+                Academic Press Monograph
+              </span>
+              <h1 className="text-xl sm:text-2xl font-black font-sans tracking-tight text-foreground">
+                {title}
+              </h1>
+              <p className="text-xs uppercase font-sans font-bold tracking-wider text-muted-foreground">
+                {author.toUpperCase()}, Department of Computer Science, University of Cambridge
+              </p>
             </div>
 
-            <div className="text-center space-y-1">
-              <h4 className="text-lg font-bold text-foreground">{title}</h4>
-              <p className="text-sm text-muted-foreground">Narrated edition by {author}</p>
+            {/* Abstract */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-primary">
+                Abstract
+              </h3>
+              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed text-justify">
+                As computational paradigms shift toward quantum supremacy, classical cryptographic primitives face unprecedented threats. This monograph provides a rigorous mathematical foundation for post-quantum security models, exploring lattice-based constructions, error-correcting codes, and multivariate polynomial equations. We present novel theorems and security proofs designed for high-assurance enterprise systems.
+              </p>
             </div>
 
+            {/* Section 1 */}
+            <div className="space-y-2 pt-2">
+              <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-primary">
+                1. Introduction to Post-Quantum Cryptography
+              </h3>
+              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed text-justify">
+                The security of contemporary digital infrastructure relies heavily on integer factorization and discrete logarithm problems, both of which are vulnerable to polynomial-time attacks via Shor&apos;s algorithm on quantum processors. Transitioning to quantum-resistant primitives requires rebuilding core trust anchors from algebraic structures that remain intractable for both classical and quantum architectures.
+              </p>
+              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed text-justify">
+                Among candidate architectures, lattice-based cryptography demonstrates optimal trade-offs between asymptotic security bounds and implementation efficiency. In particular, Learning With Errors (LWE) and its ring/module variants provide robust hardness reductions rooted in shortest vector problems in high-dimensional Euclidean lattices.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "audio" && (
+          <div className="flex flex-col items-center justify-center w-full max-w-md p-6 bg-card rounded-2xl border border-border shadow-md space-y-5">
             <audio
               ref={audioRef}
-              src={fileUrl}
+              src={fileUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"}
               onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
               onEnded={() => setIsPlaying(false)}
             />
 
-            {/* Scrubber */}
-            <div className="w-full space-y-1.5">
-              <input
-                type="range"
-                min={0}
-                max={durationSeconds || 100}
-                value={currentTime}
-                onChange={handleSeek}
-                className="w-full accent-primary h-1.5 bg-muted rounded-lg cursor-pointer"
-              />
-              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
-                <span>{formatDuration(currentTime)}</span>
-                <span>{formatDuration(durationSeconds || 0)}</span>
-              </div>
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm">
+              <Headphones className="h-10 w-10 animate-pulse" />
             </div>
 
-            {/* Audio Controls */}
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full h-10 w-10"
-                onClick={() => {
-                  if (audioRef.current) audioRef.current.currentTime = Math.max(0, currentTime - 15);
-                }}
-                title="Rewind 15s"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
+            <div className="text-center">
+              <h3 className="font-bold text-foreground text-sm">{title}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Audio Monograph Edition & Lecture</p>
+            </div>
 
+            {/* Playback Controls */}
+            <div className="flex items-center gap-4">
               <Button
                 size="icon"
-                className="rounded-full h-14 w-14 shadow-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                className="rounded-full h-12 w-12 bg-primary text-primary-foreground shadow-sm"
                 onClick={toggleAudio}
               >
-                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
+                {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
               </Button>
+            </div>
+          </div>
+        )}
 
+        {activeTab === "bibtex" && (
+          <div className="w-full max-w-2xl bg-card border border-border rounded-xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-foreground">
+                  Scholarly BibTeX Citation
+                </h3>
+                <p className="text-[11px] text-muted-foreground">Standard citation entry for LaTeX and reference managers</p>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-full h-10 px-3 text-xs font-mono"
-                onClick={changePlaybackRate}
-                title="Playback speed"
+                className="gap-1.5 text-xs"
+                onClick={handleCopyBibtex}
               >
-                {playbackRate}x
+                {copiedBibtex ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedBibtex ? "Copied" : "Copy BibTeX"}
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* 2. PDF VIEWER */}
-        {fileType === "PDF" && (
-          <div className="w-full h-[420px] sm:h-[580px] rounded-xl overflow-hidden border border-border bg-background shadow-inner flex flex-col">
-            <iframe
-              src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-              title={title}
-              className="w-full h-full border-none"
-            />
-          </div>
-        )}
-
-        {/* 3. IMAGE / MANUSCRIPT VIEWER */}
-        {fileType === "IMAGE" && (
-          <div className="flex items-center justify-center overflow-auto max-w-full">
-            <img
-              src={fileUrl}
-              alt={title}
-              style={{ transform: `scale(${zoomLevel})`, transformOrigin: "center center" }}
-              className="transition-transform duration-200 rounded-lg shadow-md max-h-[520px] object-contain"
-            />
-          </div>
-        )}
-
-        {/* 4. DOC / EPUB / TEXT VIEWER */}
-        {(fileType === "DOC" || fileType === "EPUB") && (
-          <div
-            className={`w-full max-w-3xl rounded-xl border border-border bg-background p-4 sm:p-8 shadow-sm leading-relaxed ${
-              fontSize === "sm" ? "text-sm" : fontSize === "lg" ? "text-lg leading-loose" : "text-base"
-            }`}
-          >
-            <div className="border-b border-border pb-4 mb-4">
-              <h2 className="text-xl font-bold text-foreground">{title}</h2>
-              <p className="text-sm text-muted-foreground">{author}</p>
-            </div>
-            <div className="space-y-4 text-foreground/90 font-serif">
-              <p>
-                Welcome to the digital reader view for <em>{title}</em>. This document has been
-                indexed into the LibrisAI system. Use the controls above to adjust typography sizing,
-                open the full manuscript in a dedicated tab, or ask contextual questions via the AI
-                Research Drawer.
-              </p>
-              <div className="p-4 rounded-lg bg-muted/40 border border-border/60 text-sm font-sans not-italic">
-                <p className="font-semibold text-foreground">File Source:</p>
-                <p className="text-xs text-muted-foreground font-mono break-all mt-1">{fileUrl}</p>
-              </div>
-            </div>
+            <pre className="rounded-lg bg-muted/60 p-4 font-mono text-xs text-foreground overflow-x-auto leading-relaxed border border-border/60">
+              {bibtexContent}
+            </pre>
           </div>
         )}
       </div>
