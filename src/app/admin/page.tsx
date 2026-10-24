@@ -151,7 +151,7 @@ const FALLBACK_USERS: Profile[] = [
   { id: "u3", name: "David Miller", full_name: "David Miller", email: "david.m@university.edu", phone: null, bio: null, role: "user", is_suspended: true, avatar_url: null, created_at: "", updated_at: "" },
 ];
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const [books, setBooks] = useState<(Book & { categories?: Category | null })[]>(FALLBACK_BOOKS);
   const [categories, setCategories] = useState<Category[]>(FALLBACK_CATEGORIES);
   const [users, setUsers] = useState<Profile[]>(FALLBACK_USERS);
@@ -1202,5 +1202,13 @@ export default function AdminDashboardPage() {
         </Dialog>
       </div>
     </RoleLayout>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

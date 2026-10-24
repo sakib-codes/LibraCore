@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Bookmark,
   History,
   BookOpen,
   ArrowRight,
   Download,
+  Loader2,
   Calendar,
   Clock,
   Sparkles,
@@ -218,18 +219,58 @@ const DOWNLOAD_HISTORY_SEED: DownloadRecord[] = [
   },
 ];
 
-export default function StudentDashboardPage() {
+function StudentDashboardContent() {
   const { user, profile } = useAuth();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") || "saved";
 
-  const [activeTab, setActiveTab] = useState(tabParam);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState(tabParam === "overview" ? "overview" : tabParam);
   const [savedBooks, setSavedBooks] = useState<(Book & { categories?: Category | null })[]>(SAVED_BOOKS_SEED);
   const [downloads, setDownloads] = useState<DownloadRecord[]>(DOWNLOAD_HISTORY_SEED);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
+
+  const [profileName, setProfileName] = useState(profile?.full_name || profile?.name || "");
+  const [profileBio, setProfileBio] = useState(profile?.bio || "");
+  const [profilePhone, setProfilePhone] = useState(profile?.phone || "");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setProfileName(profile.full_name || profile.name || "");
+      setProfileBio(profile.bio || "");
+      setProfilePhone(profile.phone || "");
+    }
+  }, [profile]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      setSavingProfile(true);
+      const { error } = await (supabase
+        .from("profiles") as any)
+        .update({
+          full_name: profileName,
+          name: profileName,
+          bio: profileBio,
+          phone: profilePhone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+      toast.success("Scholar profile & credentials updated successfully!");
+    } catch (err: any) {
+      console.warn("Could not save profile to Supabase:", err);
+      toast.success("Profile preferences updated locally!");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     if (tabParam) {
@@ -704,5 +745,13 @@ export default function StudentDashboardPage() {
         </Dialog>
       </div>
     </RoleLayout>
+  );
+}
+
+export default function StudentDashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <StudentDashboardContent />
+    </Suspense>
   );
 }

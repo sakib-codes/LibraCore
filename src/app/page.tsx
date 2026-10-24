@@ -198,13 +198,14 @@ const SAMPLE_BOOKS: (Book & { categories?: Category | null })[] = [
 function CatalogHome() {
   const searchParams = useSearchParams();
   const queryParam = searchParams.get("q") || "";
+  const categoryParam = searchParams.get("category") || "all";
   const { user } = useAuth();
 
   const [books, setBooks] = useState<(Book & { categories?: Category | null })[]>(SAMPLE_BOOKS);
   const [categories, setCategories] = useState<Category[]>(SAMPLE_CATEGORIES);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState(queryParam);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [selectedFormat, setSelectedFormat] = useState<string>("ALL");
   const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
 
@@ -213,6 +214,12 @@ function CatalogHome() {
       setSearchQuery(queryParam);
     }
   }, [queryParam]);
+
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, [categoryParam]);
 
   useEffect(() => {
     async function loadCatalog() {
