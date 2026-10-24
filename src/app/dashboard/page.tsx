@@ -490,226 +490,542 @@ function StudentDashboardContent() {
           </div>
         </div>
 
-        {/* Section: Saved Resources (Mockup Image 3) */}
-        <section className="space-y-4 pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-foreground">
-                Saved Resources
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Pinned monographs and scholarly articles ready for immediate offline reference.
-              </p>
-            </div>
+        {/* Navigation Tabs */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+            setActiveTab(val);
+            router.replace(`/dashboard?tab=${val}`, { scroll: false });
+          }}
+          className="w-full space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
+            <TabsList className="bg-muted/60 p-1 rounded-xl">
+              <TabsTrigger value="saved" className="text-xs font-semibold gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                <Bookmark className="h-3.5 w-3.5 text-indigo-500" /> Saved Resources ({savedBooks.length})
+              </TabsTrigger>
+              <TabsTrigger value="history" className="text-xs font-semibold gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                <History className="h-3.5 w-3.5 text-emerald-500" /> Download History ({downloads.length})
+              </TabsTrigger>
+              <TabsTrigger value="profile" className="text-xs font-semibold gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                <User className="h-3.5 w-3.5 text-sky-500" /> Scholar Profile
+              </TabsTrigger>
+              <TabsTrigger value="overview" className="text-xs font-semibold gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                <Layers className="h-3.5 w-3.5 text-amber-500" /> Full Workspace
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Sort by:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="h-8 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-foreground font-medium shadow-2xs outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="recent">Recently Added</option>
-                <option value="title">Title (A-Z)</option>
-                <option value="downloads">Most Downloaded</option>
-              </select>
-            </div>
+            <span className="text-xs text-muted-foreground font-mono">
+              Tier: <strong className="text-foreground capitalize">{profile?.role || "Scholar"}</strong>
+            </span>
           </div>
 
-          {/* Book Cards Grid - Utilizing desktop width (up to 4 cols) */}
-          {savedBooks.length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
-              {savedBooks.map((book) => (
-                <div
-                  key={book.id}
-                  className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
-                >
+          {/* Tab 1: Saved Resources */}
+          <TabsContent value="saved" className="space-y-6 mt-0">
+            <section className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight text-foreground">
+                    Saved Resources
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Pinned monographs and scholarly articles ready for immediate offline reference.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="h-8 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-foreground font-medium shadow-2xs outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="recent">Recently Added</option>
+                    <option value="title">Title (A-Z)</option>
+                    <option value="downloads">Most Downloaded</option>
+                  </select>
+                </div>
+              </div>
+
+              {savedBooks.length > 0 ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
+                  {savedBooks.map((book) => (
+                    <div
+                      key={book.id}
+                      className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                    >
+                      <div>
+                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
+                          <img
+                            src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
+                            alt={book.title}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute top-2.5 right-2.5">
+                            <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
+                              {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3.5 space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
+                              {book.categories?.name || "Cryptography"}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              • {book.published_year || "2024"} Edition
+                            </span>
+                          </div>
+
+                          <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                            <Link href={`/books/${book.id}`}>{book.title}</Link>
+                          </h3>
+
+                          <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
+                            {book.author}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
+                        <Button
+                          asChild
+                          size="sm"
+                          className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
+                        >
+                          <Link href={`/books/${book.id}`}>
+                            <Eye className="h-3.5 w-3.5" /> Read / Download
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                          title="Remove Bookmark"
+                          onClick={() => handleRemoveBookmark(book.id)}
+                        >
+                          <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Bookmark}
+                  title="Your saved research workspace is empty"
+                  description="Explore the academic repository and bookmark monographs to build your active literature index."
+                  action={
+                    <Button asChild size="sm">
+                      <Link href="/">Explore Catalog</Link>
+                    </Button>
+                  }
+                />
+              )}
+            </section>
+          </TabsContent>
+
+          {/* Tab 2: Download History */}
+          <TabsContent value="history" className="space-y-6 mt-0">
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    {/* Cover Image Container */}
-                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
-                      <img
-                        src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
-                        alt={book.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      {/* Top Right Format Pill matching Image 3 */}
-                      <div className="absolute top-2.5 right-2.5">
-                        <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
-                          {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Metadata Content */}
-                    <div className="mt-3.5 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
-                          {book.categories?.name || "Cryptography"}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground">
-                          • {book.published_year || "2024"} Edition
-                        </span>
-                      </div>
-
-                      <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
-                        <Link href={`/books/${book.id}`}>{book.title}</Link>
-                      </h3>
-
-                      <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
-                        {book.author}
-                      </p>
-                    </div>
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">
+                      Recent Download History
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Complete audit trail of all monograph exports and digital assets fetched to local storage.
+                    </p>
                   </div>
 
-                  {/* Action Buttons matching Image 3: Read/Download (indigo) + Bookmark */}
-                  <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
-                    <Button
-                      asChild
-                      size="sm"
-                      className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
-                    >
-                      <Link href={`/books/${book.id}`}>
-                        <Eye className="h-3.5 w-3.5" /> Read / Download
-                      </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-xs font-semibold shadow-2xs self-start sm:self-auto"
+                    onClick={handleExportCSV}
+                  >
+                    <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export CSV Log
+                  </Button>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-border/70">
+                  <Table className="min-w-[700px]">
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Book Cover & Title
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Author
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Category
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          File Format
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Download Timestamp
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">
+                          Action
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {downloads.map((item) => (
+                        <TableRow key={item.id} className="hover:bg-muted/30">
+                          <TableCell className="py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                                <BookOpen className="h-4 w-4" />
+                              </div>
+                              <span className="font-semibold text-xs text-foreground line-clamp-1">
+                                {item.book_title}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-medium">
+                            {item.author}
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-block rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 text-[10px] font-bold border border-indigo-500/20">
+                              {item.category_name}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs font-mono font-semibold text-muted-foreground">
+                              {item.file_type}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">
+                            {item.date}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title="Re-open / Download"
+                              onClick={() => {
+                                if (item.file_url) window.open(item.file_url, "_blank");
+                                toast.success(`Re-downloading ${item.book_title}`);
+                              }}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                  <span>Showing {downloads.length} of 142 total downloads</span>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs" disabled>
+                      Previous
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                      title="Remove Bookmark"
-                      onClick={() => handleRemoveBookmark(book.id)}
-                    >
-                      <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
+                    <Button variant="outline" size="sm" className="h-8 px-3 text-xs">
+                      Next
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={Bookmark}
-              title="Your saved research workspace is empty"
-              description="Explore the academic repository and bookmark monographs to build your active literature index."
-              action={
-                <Button asChild size="sm">
-                  <Link href="/">Explore Catalog</Link>
-                </Button>
-              }
-            />
-          )}
-        </section>
+              </div>
+            </section>
+          </TabsContent>
 
-        {/* Section: Recent Download History matching Image 3 */}
-        <section className="space-y-4 pt-4">
-          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold tracking-tight text-foreground">
-                  Recent Download History
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Complete audit trail of all monograph exports and digital assets fetched to local storage.
+          {/* Tab 3: Scholar Profile & Credentials */}
+          <TabsContent value="profile" className="space-y-6 mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="rounded-2xl border border-border/80 bg-card p-6 shadow-2xs space-y-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xl font-bold">
+                    {profileName ? profileName.slice(0, 2).toUpperCase() : "SC"}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">{profileName || "Scholar"}</h3>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <Badge className="mt-1.5 bg-primary/10 text-primary hover:bg-primary/15 text-[10px] font-bold border-0 capitalize">
+                      {profile?.role || "Scholar"} Tier
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-border/60 space-y-3 text-xs">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Affiliation:</span>
+                    <span className="font-semibold text-foreground">Institute of Digital Sciences</span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center gap-2"><HardDrive className="h-4 w-4" /> Library Quota:</span>
+                    <span className="font-semibold text-foreground">Unlimited Access</span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Academic Status:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Active & Verified</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 rounded-2xl border border-border/80 bg-card p-6 shadow-2xs">
+                <h3 className="text-base font-bold text-foreground">Scholar Credentials & Profile</h3>
+                <p className="text-xs text-muted-foreground mt-1 mb-5">
+                  Update your academic identification, researcher bio, and institutional contact details.
                 </p>
+
+                <form onSubmit={handleSaveProfile} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="prof-name" className="text-xs font-semibold">Full Name / Academic Title</Label>
+                      <Input
+                        id="prof-name"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        placeholder="Dr. Alex Mercer"
+                        className="h-9 text-xs"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="prof-email" className="text-xs font-semibold">Institutional Email</Label>
+                      <Input
+                        id="prof-email"
+                        value={user?.email || ""}
+                        disabled
+                        className="h-9 text-xs bg-muted/50 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="prof-bio" className="text-xs font-semibold">Research Focus & Specialization</Label>
+                    <Input
+                      id="prof-bio"
+                      value={profileBio}
+                      onChange={(e) => setProfileBio(e.target.value)}
+                      placeholder="e.g. Post-Quantum Cryptography, Topological Quantum Memory, Neural Systems"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="prof-phone" className="text-xs font-semibold">Office / Extension Phone</Label>
+                    <Input
+                      id="prof-phone"
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(e.target.value)}
+                      placeholder="+1 (555) 019-2834"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={savingProfile}
+                      className="bg-primary text-primary-foreground font-semibold text-xs gap-1.5 shadow-xs"
+                    >
+                      {savingProfile && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Save Profile Changes
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Tab 4: Overview (Full Workspace) */}
+          <TabsContent value="overview" className="space-y-8 mt-0">
+            {/* Saved Resources */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight text-foreground">
+                    Saved Resources
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Pinned monographs and scholarly articles ready for immediate offline reference.
+                  </p>
+                </div>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 text-xs font-semibold shadow-2xs self-start sm:self-auto"
-                onClick={handleExportCSV}
-              >
-                <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export CSV Log
-              </Button>
-            </div>
-
-            {/* High Density Table matching Image 3 */}
-            <div className="overflow-x-auto rounded-xl border border-border/70">
-              <Table className="min-w-[700px]">
-                <TableHeader>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Book Cover & Title
-                    </TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Author
-                    </TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Category
-                    </TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      File Format
-                    </TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Download Timestamp
-                    </TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {downloads.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-muted/30">
-                      <TableCell className="py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
-                            <BookOpen className="h-4 w-4" />
+              {savedBooks.length > 0 ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
+                  {savedBooks.map((book) => (
+                    <div
+                      key={book.id}
+                      className="group relative flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                    >
+                      <div>
+                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted border border-border/60">
+                          <img
+                            src={book.cover_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"}
+                            alt={book.title}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute top-2.5 right-2.5">
+                            <span className="rounded-full bg-background/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-foreground border border-border/70 shadow-sm font-mono">
+                              {book.file_type} • {book.file_size_bytes ? `${(book.file_size_bytes / 1000000).toFixed(1)} MB` : "14.2 MB"}
+                            </span>
                           </div>
-                          <span className="font-semibold text-xs text-foreground line-clamp-1">
-                            {item.book_title}
-                          </span>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-medium">
-                        {item.author}
-                      </TableCell>
-                      <TableCell>
-                        <span className="inline-block rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 text-[10px] font-bold border border-indigo-500/20">
-                          {item.category_name}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs font-mono font-semibold text-muted-foreground">
-                          {item.file_type}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
-                        {item.date}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                          title="Re-open / Download"
-                          onClick={() => {
-                            if (item.file_url) window.open(item.file_url, "_blank");
-                            toast.success(`Re-downloading ${item.book_title}`);
-                          }}
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
 
-            {/* Table Pagination Footer matching Image 3 */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-              <span>Showing {downloads.length} of 142 total downloads</span>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs" disabled>
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs">
-                  Next
-                </Button>
+                        <div className="mt-3.5 space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px] py-0 px-2 text-primary border-primary/30 font-medium bg-primary/5">
+                              {book.categories?.name || "Cryptography"}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              • {book.published_year || "2024"} Edition
+                            </span>
+                          </div>
+
+                          <h3 className="text-sm font-bold text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                            <Link href={`/books/${book.id}`}>{book.title}</Link>
+                          </h3>
+
+                          <p className="text-xs text-muted-foreground line-clamp-1 font-medium">
+                            {book.author}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-2 pt-3 border-t border-border/50">
+                        <Button
+                          asChild
+                          size="sm"
+                          className="flex-1 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-2xs hover:bg-primary/90"
+                        >
+                          <Link href={`/books/${book.id}`}>
+                            <Eye className="h-3.5 w-3.5" /> Read / Download
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-primary border-primary/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                          title="Remove Bookmark"
+                          onClick={() => handleRemoveBookmark(book.id)}
+                        >
+                          <Bookmark className="h-3.5 w-3.5 fill-primary text-primary" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Bookmark}
+                  title="Your saved research workspace is empty"
+                  description="Explore the academic repository and bookmark monographs to build your active literature index."
+                />
+              )}
+            </section>
+
+            {/* Download History Table */}
+            <section className="space-y-4">
+              <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">
+                      Recent Download History
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Complete audit trail of all monograph exports and digital assets fetched to local storage.
+                    </p>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-xs font-semibold shadow-2xs self-start sm:self-auto"
+                    onClick={handleExportCSV}
+                  >
+                    <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export CSV Log
+                  </Button>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-border/70">
+                  <Table className="min-w-[700px]">
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Book Cover & Title
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Author
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Category
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          File Format
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Download Timestamp
+                        </TableHead>
+                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">
+                          Action
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {downloads.map((item) => (
+                        <TableRow key={item.id} className="hover:bg-muted/30">
+                          <TableCell className="py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                                <BookOpen className="h-4 w-4" />
+                              </div>
+                              <span className="font-semibold text-xs text-foreground line-clamp-1">
+                                {item.book_title}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-medium">
+                            {item.author}
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-block rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 text-[10px] font-bold border border-indigo-500/20">
+                              {item.category_name}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs font-mono font-semibold text-muted-foreground">
+                              {item.file_type}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">
+                            {item.date}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title="Re-open / Download"
+                              onClick={() => {
+                                if (item.file_url) window.open(item.file_url, "_blank");
+                                toast.success(`Re-downloading ${item.book_title}`);
+                              }}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          </TabsContent>
+        </Tabs>
 
         {/* Modal: New Collection */}
         <Dialog open={collectionModalOpen} onOpenChange={setCollectionModalOpen}>
