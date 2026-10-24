@@ -5,6 +5,9 @@ import {
   generateBookDescription,
 } from "@/lib/chatbot.server";
 
+export const dynamic = "force-dynamic";
+export const runtime = "edge";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

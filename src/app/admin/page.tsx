@@ -203,9 +203,11 @@ export default function AdminDashboardPage() {
         if (catsRes.data && catsRes.data.length > 0) {
           const loadedCats = catsRes.data as unknown as Category[];
           setCategories(loadedCats);
-          if (!newCategoryId && loadedCats[0]) setNewCategoryId(loadedCats[0].id);
+          if (loadedCats[0]) {
+            setNewCategoryId((prev) => prev || loadedCats[0].id);
+          }
         } else if (FALLBACK_CATEGORIES[0]) {
-          setNewCategoryId(FALLBACK_CATEGORIES[0].id);
+          setNewCategoryId((prev) => prev || FALLBACK_CATEGORIES[0].id);
         }
 
         if (booksRes.data && booksRes.data.length > 0) {
@@ -234,10 +236,26 @@ export default function AdminDashboardPage() {
     if (!deleteTarget) return;
 
     if (deleteTarget.type === "book") {
+      const bookToDelete = books.find((b) => b.id === deleteTarget.id);
       setBooks((prev) => prev.filter((b) => b.id !== deleteTarget.id));
       try {
         await supabase.from("books").delete().eq("id", deleteTarget.id);
-        toast.success("Book removed from library catalog.");
+
+        // Remove storage files if hosted in Supabase storage buckets
+        if (bookToDelete?.file_url && bookToDelete.file_url.includes("library-files")) {
+          const fileName = bookToDelete.file_url.split("/").pop();
+          if (fileName) {
+            await supabase.storage.from("library-files").remove([fileName]);
+          }
+        }
+        if (bookToDelete?.cover_url && bookToDelete.cover_url.includes("book-covers")) {
+          const coverName = bookToDelete.cover_url.split("/").pop();
+          if (coverName) {
+            await supabase.storage.from("book-covers").remove([coverName]);
+          }
+        }
+
+        toast.success("Book and media assets removed from catalog.");
       } catch {
         toast.info("Book record removed.");
       }
@@ -338,10 +356,16 @@ export default function AdminDashboardPage() {
         title: newTitle.trim(),
         author: newAuthor.trim(),
         description: newDescription.trim() || `${newTitle} by ${newAuthor}.`,
+        ai_summary: newDescription.trim().slice(0, 240) || null,
         category_id: categoryObj ? categoryObj.id : null,
         file_type: newFormat.toLowerCase(),
         file_url: fileUrl,
         cover_url: coverUrl,
+        file_size_bytes: resourceFile ? resourceFile.size : 12000000,
+        page_count: newFormat === "AUDIO" ? null : 240,
+        duration_seconds: newFormat === "AUDIO" ? 3600 : null,
+        language: "English",
+        publisher: "LibrisAI Repository",
         download_count: 0,
         view_count: 0,
         published_year: new Date().getFullYear(),

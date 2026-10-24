@@ -238,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return { error: new Error("Authentication failed. Please verify your credentials."), role: "user" };
     },
-    [applySessionData]
+    []
   );
 
   const signUp = useCallback(
@@ -265,21 +265,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (data?.user) {
           // Create profile record in public.profiles table
-          await supabase.from("profiles").upsert({
-            id: data.user.id,
-            name: fullName.trim(),
-            full_name: fullName.trim(),
-            email: cleanEmail,
-            role: "user",
-            is_suspended: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          } as any).catch(() => {});
+          try {
+            await (supabase.from("profiles") as any).upsert({
+              id: data.user.id,
+              name: fullName.trim(),
+              full_name: fullName.trim(),
+              email: cleanEmail,
+              role: "user",
+              is_suspended: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          } catch {
+            // Silently ignore or rely on trigger
+          }
 
-          await supabase.from("user_roles").upsert({
-            user_id: data.user.id,
-            role: "user",
-          } as any).catch(() => {});
+          try {
+            await (supabase.from("user_roles") as any).upsert({
+              user_id: data.user.id,
+              role: "user",
+            });
+          } catch {
+            // Silently ignore or rely on trigger
+          }
 
           if (data.session) {
             setSession(data.session);

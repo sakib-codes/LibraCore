@@ -32,4 +32,6 @@ Thumbs.db
 # Agent skill scratch caches
 .claude/
 agent/
+scratch/
+*.tsbuildinfo
 
