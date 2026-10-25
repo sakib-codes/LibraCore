@@ -10,7 +10,8 @@
     "preview": "opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare deploy",
     "open-next:build": "opennextjs-cloudflare build",
-    "open-next:deploy": "opennextjs-cloudflare deploy"
+    "open-next:deploy": "opennextjs-cloudflare deploy",
+    "build:pages": "opennextjs-cloudflare build && cp .open-next/worker.js .open-next/assets/_worker.js"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
