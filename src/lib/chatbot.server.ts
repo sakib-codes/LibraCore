@@ -1,5 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  convertDocumentWithMarkItDown,
+  extractRelevantSections,
+  type SectionExtractionResult,
+} from "@/lib/markitdown.server";
 
 export type ChatHistoryItem = {
   role: "user" | "assistant" | "model" | "system";
@@ -83,7 +88,7 @@ export async function fetchCatalogContext(): Promise<CatalogBookSummary[]> {
       .from("books")
       .select("id, title, author, description, file_type, categories ( name )")
       .eq("is_archived", false)
-      .limit(30);
+      .limit(16);
 
     if (!error && data && data.length > 0) {
       cachedCatalog = (data as any[]).map((b: any) => ({
@@ -92,7 +97,7 @@ export async function fetchCatalogContext(): Promise<CatalogBookSummary[]> {
         author: b.author,
         category: b.categories?.name || "General",
         file_type: b.file_type?.toUpperCase() || "PDF",
-        description: b.description ? b.description.slice(0, 200) : null,
+        description: b.description ? b.description.slice(0, 120) : null,
       }));
       lastCacheTimestamp = now;
       return cachedCatalog;
@@ -115,40 +120,71 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 /**
- * Robust generation with multi-model fallback using Edge-native fetch & SDK fallback
+ * High-speed generation with speculative execution (gemini-3.5-flash with staggered gemini-3.5-flash-lite backup)
+ * Never invokes gemini-flash-latest (known timeout/queue bug on Google AI Studio endpoint)
  */
 async function generateWithFallback(contents: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  // 1. Standard Edge fetch (100% Cloudflare Workers / Edge Runtime compatible)
-  const candidateModels = Array.from(new Set([GEMINI_MODEL, "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"]));
-  for (const model of candidateModels) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(20000),
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: contents }] }],
-        }),
-      });
+  const abortController = new AbortController();
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
-      }
-    } catch (err: any) {
-      console.warn(`[Gemini REST] Model ${model} returned error: ${err?.message || err}. Trying next fallback...`);
+  const fetchModel = async (model: string, timeoutMs = 9000): Promise<string> => {
+    const tStart = Date.now();
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    // Combine component abort with timeout
+    const combinedSignal = AbortSignal.any
+      ? AbortSignal.any([abortController.signal, timeoutSignal])
+      : abortController.signal;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: combinedSignal,
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: contents }] }],
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`HTTP ${res.status}: ${err?.error?.message || "Error"}`);
     }
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("Empty candidate");
+
+    console.log(`[Gemini REST] Model ${model} succeeded in ${Date.now() - tStart}ms`);
+    return text;
+  };
+
+  try {
+    // 1. Immediately fire primary model: gemini-3.5-flash
+    const primary = fetchModel("gemini-3.5-flash", 9500);
+
+    // 2. If primary hasn't resolved within 3200ms, launch fast gemini-3.5-flash-lite in parallel
+    let timer: NodeJS.Timeout | null = null;
+    const backup = new Promise<string>((resolve, reject) => {
+      timer = setTimeout(() => {
+        fetchModel("gemini-3.5-flash-lite", 7500).then(resolve).catch(reject);
+      }, 3200);
+    });
+
+    // Whichever finishes first fulfills the request
+    const winner = await Promise.any([primary, backup]);
+    if (timer) clearTimeout(timer);
+    abortController.abort();
+    return winner;
+  } catch (err: any) {
+    console.warn("[Gemini REST] Speculative race error, trying SDK fallback:", err?.message || err);
   }
 
-  // 2. Secondary fallback via @google/genai SDK
+  // 3. Resilient SDK fallback
   try {
     const ai = getGeminiClient();
-    const res = await ai.models.generateContent({ model: "gemini-3.5-flash", contents });
+    const res = await ai.models.generateContent({ model: "gemini-3.5-flash-lite", contents });
     if (res.text) return res.text;
   } catch (err: any) {
     console.warn("[Gemini SDK] SDK fallback error:", err?.message || err);
@@ -227,7 +263,7 @@ Guidelines:
 }
 
 /**
- * Contextual Book Q&A for /books/[id]
+ * Contextual Book Q&A for /books/[id] grounded with Microsoft MarkItDown
  */
 export async function askBookContextualQuestion({
   bookTitle,
@@ -235,34 +271,81 @@ export async function askBookContextualQuestion({
   category,
   description,
   question,
+  fileUrl,
+  markdownContent,
 }: {
   bookTitle: string;
   author: string;
   category?: string;
   description?: string;
   question: string;
-}): Promise<string> {
+  fileUrl?: string;
+  markdownContent?: string;
+}): Promise<{ reply: string; markitdownMetrics?: SectionExtractionResult }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return `Contextual Q&A for "${bookTitle}" by ${author}: Please set GEMINI_API_KEY in .env.local to activate live book analysis.`;
+    return {
+      reply: `Contextual Q&A for "${bookTitle}" by ${author}: Please set GEMINI_API_KEY in .env.local to activate live book analysis.`,
+    };
   }
 
   try {
+    let markitdownMetrics: SectionExtractionResult | undefined;
+    let manuscriptContext = "";
+
+    // 1. Process with MarkItDown to prevent wasting Gemini tokens
+    if (markdownContent) {
+      markitdownMetrics = extractRelevantSections(markdownContent, question, 1500);
+      manuscriptContext = `
+Grounded Document Excerpt (Extracted via Libris AI Intelligence — Saved ${markitdownMetrics.percentSaved}% prompt tokens):
+Sections Selected: ${markitdownMetrics.sectionsUsed.join(", ")}
+${markitdownMetrics.excerptMarkdown}
+`;
+    } else if (fileUrl) {
+      try {
+        const mdResult = await convertDocumentWithMarkItDown(fileUrl, {
+          title: bookTitle,
+          author,
+          category,
+          description,
+        });
+        if (mdResult.success && mdResult.markdown) {
+          markitdownMetrics = extractRelevantSections(mdResult.markdown, question, 1500);
+          manuscriptContext = `
+Grounded Document Excerpt (Extracted via Libris AI Intelligence — Saved ${markitdownMetrics.percentSaved}% prompt tokens):
+Sections Selected: ${markitdownMetrics.sectionsUsed.join(", ")}
+${markitdownMetrics.excerptMarkdown}
+`;
+        }
+      } catch (err) {
+        console.warn("[MarkItDown Q&A] Fallback to standard context:", err);
+      }
+    }
+
     const prompt = `You are an expert academic specialist reviewing the following library resource:
 Title: "${bookTitle}"
 Author: ${author}
 Category: ${category || "General"}
 Overview: ${description || "No description provided"}
+${manuscriptContext}
 
 Reader's Inquiry: "${question}"
 
-Provide a direct, intellectually rigorous, and helpful answer analyzing the themes, concepts, or historical context of this work in 2-3 concise paragraphs.`;
+Instructions:
+1. Ground your answer in the extracted document sections above whenever relevant, referencing exact section titles or theorems.
+2. Provide a direct, intellectually rigorous, and helpful answer in 2-3 concise paragraphs.
+3. Be accurate, cite formulas or definitions precisely, and do not invent facts outside the manuscript context.`;
 
     const reply = await generateWithFallback(prompt);
-    return reply || "No insights could be formulated for this inquiry.";
+    return {
+      reply: reply || "No insights could be formulated for this inquiry.",
+      markitdownMetrics,
+    };
   } catch (error) {
     console.error("[Book Q&A Error]:", error);
-    return "The contextual analysis engine is currently offline. Please try again shortly.";
+    return {
+      reply: "The contextual analysis engine is currently offline. Please try again shortly.",
+    };
   }
 }
 

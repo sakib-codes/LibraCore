@@ -33,6 +33,7 @@ export interface AuthContextValue {
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   loginDemo: (role: "user" | "admin") => Promise<AppRole>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null; profile?: Profile }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -41,20 +42,28 @@ const DEMO_ACCOUNTS = {
   admin: {
     userId: "a0000000-0000-0000-0000-000000000001",
     email: "admin@libris.ai",
-    fullName: "Dr. Victoria Vance (Admin)",
+    fullName: "Dr. Victoria Vance",
     name: "Victoria Vance",
     role: "admin" as AppRole,
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
-    bio: "Chief Librarian & Digital Archives Administrator",
+    avatarUrl: undefined,
+    bio: "Chief Librarian & Digital Archives Administrator specializing in classical literature preservation and scholarly provenance.",
+    academicTitle: "Chief Librarian & Archival Director",
+    institution: "Libris Institute of Advanced Studies",
+    department: "Special Collections & Digital Archives",
+    researchInterests: ["Digital Provenance", "Archival Systems", "Classical Manuscripts"],
   },
   user: {
     userId: "a0000000-0000-0000-0000-000000000002",
     email: "student@libris.ai",
-    fullName: "Alex Mercer (Reader)",
+    fullName: "Alex Mercer",
     name: "Alex Mercer",
     role: "user" as AppRole,
-    avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80",
-    bio: "Computer Science Scholar & Research Fellow",
+    avatarUrl: undefined,
+    bio: "Doctoral candidate focusing on post-quantum lattice cryptography, computational complexity, and secure multi-party communication.",
+    academicTitle: "Doctoral Research Fellow",
+    institution: "Oxford-Stanford Joint AI Research Center",
+    department: "Department of Computer Science & Cryptography",
+    researchInterests: ["Lattice Cryptography", "Quantum Algorithms", "Information Security"],
   },
 };
 
@@ -111,14 +120,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       created_at: new Date().toISOString(),
     } as any;
 
+    const demoMatch =
+      data.userId === DEMO_ACCOUNTS.admin.userId
+        ? DEMO_ACCOUNTS.admin
+        : data.userId === DEMO_ACCOUNTS.user.userId
+        ? DEMO_ACCOUNTS.user
+        : null;
+
+    // Sanitize any legacy dummy unsplash avatar
+    const rawAvatar = data.avatarUrl || demoMatch?.avatarUrl;
+    const cleanAvatar =
+      rawAvatar && !rawAvatar.includes("images.unsplash.com") ? rawAvatar : null;
+
+    if (data.avatarUrl && data.avatarUrl.includes("images.unsplash.com")) {
+      data.avatarUrl = undefined;
+      setSessionCookie(data);
+    }
+
     const mockProfile: Profile = {
       id: data.userId,
       name: data.fullName,
       full_name: data.fullName,
       email: data.email,
-      avatar_url: data.avatarUrl || null,
+      avatar_url: cleanAvatar,
       phone: null,
-      bio: null,
+      bio: demoMatch?.bio || "Scholar & Research Fellow at LibrisAI Digital Knowledge Repository.",
+      academic_title: demoMatch?.academicTitle || "Scholar / Researcher",
+      institution: demoMatch?.institution || "Institute of Advanced Scientific Research",
+      department: demoMatch?.department || "Department of Computer Science & Mathematics",
+      research_interests: demoMatch?.researchInterests || [
+        "Digital Libraries",
+        "Information Retrieval",
+        "Machine Learning",
+      ],
       role: data.role,
       is_suspended: false,
       created_at: new Date().toISOString(),
@@ -128,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(mockUser);
     setProfile(mockProfile);
     setRole(data.role);
-    setSessionCookie(data);
+    setSessionCookie({ ...data, avatarUrl: cleanAvatar || undefined });
   }, []);
 
   const loginDemo = useCallback(async (selectedRole: "user" | "admin"): Promise<AppRole> => {
@@ -154,14 +188,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
 
         const prof: any = profData;
-        if (prof) setProfile(prof as Profile);
+        const liveAvatar =
+          prof?.avatar_url && !prof.avatar_url.includes("images.unsplash.com")
+            ? prof.avatar_url
+            : undefined;
+
+        if (prof) {
+          setProfile({ ...prof, avatar_url: liveAvatar || null } as Profile);
+        }
 
         setSessionCookie({
           userId: data.user.id,
           email: data.user.email || account.email,
           fullName: prof?.full_name || account.fullName,
           role: account.role,
-          avatarUrl: prof?.avatar_url || account.avatarUrl,
+          avatarUrl: liveAvatar,
         });
 
         setLoading(false);
@@ -175,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: account.email,
       fullName: account.fullName,
       role: account.role,
-      avatarUrl: account.avatarUrl,
+      avatarUrl: undefined,
     });
     setLoading(false);
     return account.role;
@@ -377,6 +418,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [applySessionData]);
 
+  const updateProfile = useCallback(
+    async (updates: Partial<Profile>): Promise<{ error: Error | null; profile?: Profile }> => {
+      if (!user) {
+        return { error: new Error("No authenticated user found") };
+      }
+
+      try {
+        const { data, error } = await (supabase
+          .from("profiles") as any)
+          .update(updates)
+          .eq("id", user.id)
+          .select("*")
+          .maybeSingle();
+
+        if (error) {
+          // Fallback local update (e.g. for demo sessions or offline mode)
+          const merged: Profile = {
+            ...(profile || ({} as Profile)),
+            ...updates,
+            id: user.id,
+            updated_at: new Date().toISOString(),
+          } as Profile;
+
+          setProfile(merged);
+          setSessionCookie({
+            userId: user.id,
+            email: merged.email || user.email || "",
+            fullName: merged.full_name || merged.name || "Scholar",
+            role: merged.role || role || "user",
+            avatarUrl: merged.avatar_url || undefined,
+          });
+
+          return { error: null, profile: merged };
+        }
+
+        const updated = (data as any) as Profile;
+        setProfile(updated);
+        setSessionCookie({
+          userId: user.id,
+          email: updated.email || user.email || "",
+          fullName: updated.full_name || updated.name || "Scholar",
+          role: updated.role || role || "user",
+          avatarUrl: updated.avatar_url || undefined,
+        });
+
+        return { error: null, profile: updated };
+      } catch (err: any) {
+        // Fallback local update
+        const merged: Profile = {
+          ...(profile || ({} as Profile)),
+          ...updates,
+          id: user.id,
+          updated_at: new Date().toISOString(),
+        } as Profile;
+
+        setProfile(merged);
+        setSessionCookie({
+          userId: user.id,
+          email: merged.email || user.email || "",
+          fullName: merged.full_name || merged.name || "Scholar",
+          role: merged.role || role || "user",
+          avatarUrl: merged.avatar_url || undefined,
+        });
+
+        return { error: null, profile: merged };
+      }
+    },
+    [user, profile, role]
+  );
+
   const value: AuthContextValue = {
     user,
     session,
@@ -390,6 +501,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     refresh,
     loginDemo,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

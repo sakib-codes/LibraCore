@@ -7,7 +7,6 @@ import {
 } from "@/lib/chatbot.server";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Contextual Book Q&A
     if (action === "book-qa") {
-      const { bookTitle, author, category, description, question } = body;
+      const { bookTitle, author, category, description, question, fileUrl, markdownContent } = body;
       if (!bookTitle || !question) {
         return NextResponse.json(
           { error: "Missing required fields (bookTitle, question)" },
@@ -40,8 +39,14 @@ export async function POST(req: NextRequest) {
         category,
         description,
         question,
+        fileUrl,
+        markdownContent,
       });
-      return NextResponse.json({ success: true, result });
+      return NextResponse.json({
+        success: true,
+        result: result.reply,
+        markitdownMetrics: result.markitdownMetrics,
+      });
     }
 
     // 3. Admin One-Click Description Generator

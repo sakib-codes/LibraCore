@@ -170,7 +170,7 @@ export function CatalogIntelligenceModal({
     if (!report) return;
     const md = `# LibrisAI Catalog Intelligence & Health Audit
 Generated: ${new Date(report.generatedAt).toLocaleString()}
-Model Engine: Gemini 3.5 Flash (Institutional Tier)
+Model Engine: Libris AI Engine (Institutional Tier)
 
 ## Executive Scorecard
 - **Overall Health Score:** ${report.overallScore}/100 (${report.statusTier})
@@ -244,7 +244,7 @@ ${report.expansionRecommendations.map((r) => `### ${r.topic} (${r.priority} Prio
                     Catalog Intelligence & Health Audit
                   </DialogTitle>
                   <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary bg-primary/5">
-                    gemini-3.5-flash
+                    Libris AI Flash
                   </Badge>
                 </div>
                 <DialogDescription className="text-xs text-muted-foreground">
@@ -297,7 +297,7 @@ ${report.expansionRecommendations.map((r) => `### ${r.topic} (${r.priority} Prio
                 <Sparkles className="h-5 w-5 text-primary absolute inset-0 m-auto" />
               </div>
               <p className="text-sm font-semibold text-foreground">
-                Analyzing catalog inventory via Gemini 3.5 Flash...
+                Analyzing catalog inventory via Libris AI...
               </p>
               <p className="text-xs text-muted-foreground max-w-sm text-center">
                 Computing metadata completeness, cross-referencing domain distribution, and synthesizing research gaps.
@@ -375,7 +375,7 @@ ${report.expansionRecommendations.map((r) => `### ${r.topic} (${r.priority} Prio
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4.5 space-y-2 relative overflow-hidden">
                 <div className="flex items-center gap-2 text-xs font-bold text-primary">
                   <Sparkles className="h-4 w-4" />
-                  <span>Gemini Archival Assessment</span>
+                  <span>Libris AI Archival Assessment</span>
                 </div>
                 <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-serif italic">
                   &ldquo;{report.aiExecutiveSummary}&rdquo;

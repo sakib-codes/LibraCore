@@ -28,13 +28,19 @@ import {
   FileDown,
   X,
   Plus,
+  RotateCw,
+  Square,
+  Gauge,
+  Mic,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, cn } from "@/lib/utils";
 import type { FileType } from "@/integrations/supabase/types";
+import { motion } from "framer-motion";
 
 export interface ResearchNote {
   id: string;
@@ -52,6 +58,8 @@ export interface PageBookmark {
 }
 
 interface BookPreviewReaderProps {
+  id?: string;
+  bookId?: string;
   title: string;
   author: string;
   fileUrl: string;
@@ -59,9 +67,38 @@ interface BookPreviewReaderProps {
   durationSeconds?: number | null;
   pageCount?: number | null;
   onDownload?: () => void;
+  description?: string;
+}
+
+export interface AudioSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  text: string;
+}
+
+function cleanTextForSpeech(raw: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/```[\s\S]*?```/g, "Code implementation block omitted for audio lecture.")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\|.*\|/g, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(\*|_)(.*?)\1/g, "$2")
+    .replace(/^>\s+/gm, "")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^---$/gm, "")
+    .replace(/\n{2,}/g, "\n\n")
+    .replace(/[ \t]+/g, " ")
+    .trim();
 }
 
 export function BookPreviewReader({
+  id,
+  bookId,
   title,
   author,
   fileUrl,
@@ -69,6 +106,7 @@ export function BookPreviewReader({
   durationSeconds,
   pageCount = 342,
   onDownload,
+  description,
 }: BookPreviewReaderProps) {
   const [activeTab, setActiveTab] = useState<"reader" | "audio" | "bibtex">("reader");
   const [currentPage, setCurrentPage] = useState(1);
@@ -256,19 +294,342 @@ export function BookPreviewReader({
     }
   };
 
-  // Audio Player State
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Speech API Synthesizer State (Milestone 35)
+  const [, setSpeechSupported] = useState(true);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceIndex, setSelectedVoiceIndex] = useState(0);
+  const [speechRate, setSpeechRate] = useState<number>(1.0);
+  const [speechPlaying, setSpeechPlaying] = useState(false);
+  const [speechPaused, setSpeechPaused] = useState(false);
+  const [currentSectionId, setCurrentSectionId] = useState<string>("briefing");
+  const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [speechProgress, setSpeechProgress] = useState<number>(0);
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const toggleAudio = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
+  // Compute available audio sections
+  const audioSections: AudioSection[] = [
+    {
+      id: "briefing",
+      title: "Abstract & Scholarly Briefing",
+      subtitle: "Executive overview & core research methodology",
+      text: cleanTextForSpeech(
+        description ||
+          `Welcome to the LibrisAI scholarly audio briefing for ${title}, authored by ${author}. This monograph provides an in-depth examination of foundational principles, empirical analysis, and theoretical frameworks. The work addresses critical paradigms, evaluating state-of-the-art methodologies and presenting structured research findings for academic advancement.`
+      ),
+    },
+    {
+      id: "executive",
+      title: "Executive Summary & Provable Bounds",
+      subtitle: "Mathematical formalisms, theoretical guarantees & bounds",
+      text: cleanTextForSpeech(
+        `Executive Summary of ${title}. The methodology employed in this monograph combines rigorous theoretical formalization with empirical benchmark evaluation. The author, ${author}, establishes provable bounds, analyzes asymptotic complexities, and delineates operational parameters across distributed environments. Cross-disciplinary implications are synthesized to provide researchers with verifiable, reproducible models.`
+      ),
+    },
+    {
+      id: "ch1",
+      title: "Chapter 1: Foundational Framework",
+      subtitle: "System model, primary assumptions, and definitions",
+      text: cleanTextForSpeech(
+        `Chapter 1: Foundational Framework and Methodological Grounding. We formalize the primary assumptions under which the system operates. Prior research has identified vulnerabilities in naive implementations. In contrast, our construction guarantees resilience against active adversaries while maintaining optimal asymptotic communication efficiency across heterogeneous nodes.`
+      ),
+    },
+    {
+      id: "ch2",
+      title: "Chapter 2: Core Algorithmic Protocols",
+      subtitle: "Protocol design, reduction proofs, and bounds",
+      text: cleanTextForSpeech(
+        `Chapter 2: Core Algorithmic Design and Reduction Proofs. We introduce the core protocol algorithm. The protocol operates in deterministic rounds, ensuring state synchronization without redundant message overhead. Lemma 2.1 establishes correctness under standard cryptographic assumptions, reducing security directly to the hardness of the underlying lattice problem.`
+      ),
+    },
+    {
+      id: "ch3",
+      title: "Chapter 3: Empirical Validation & Benchmark",
+      subtitle: "High-throughput evaluation and concluding synthesis",
+      text: cleanTextForSpeech(
+        `Chapter 3: Empirical Validation and Performance Analysis. To validate theoretical guarantees, extensive simulations were conducted across scaled testbeds. Our implementation achieves a seventy-four percent reduction in verification latency compared to existing baselines, confirming feasibility for high-assurance academic and production deployment.`
+      ),
+    },
+  ];
+
+  const currentSection =
+    audioSections.find((s) => s.id === currentSectionId) || audioSections[0];
+  const currentSectionText = currentSection ? currentSection.text : "";
+  const currentSectionTitle = currentSection ? currentSection.title : "Monograph Briefing";
+
+  // Calculate estimated total duration (140 words per minute at 1.0x rate)
+  const wordCount = currentSectionText ? currentSectionText.split(/\s+/).length : 50;
+  const estimatedTotalTime = Math.max(10, Math.ceil((wordCount / (140 * speechRate)) * 60));
+
+  // Initialize Speech Synthesis Voices
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setSpeechSupported(false);
+      return;
     }
+
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length > 0) {
+        setVoices(v);
+        const preferredIdx = v.findIndex(
+          (voice) =>
+            (voice.name.includes("Google") ||
+              voice.name.includes("Natural") ||
+              voice.name.includes("Samantha") ||
+              voice.name.includes("Daniel") ||
+              voice.name.includes("Alex") ||
+              voice.name.includes("Karen")) &&
+            voice.lang.startsWith("en")
+        );
+        if (preferredIdx !== -1) {
+          setSelectedVoiceIndex(preferredIdx);
+        } else {
+          const enIdx = v.findIndex((voice) => voice.lang.startsWith("en"));
+          if (enIdx !== -1) setSelectedVoiceIndex(enIdx);
+        }
+      }
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Cleanup speech when switching away from audio tab
+  useEffect(() => {
+    if (activeTab !== "audio" && typeof window !== "undefined" && "speechSynthesis" in window) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        setSpeechPlaying(false);
+        setSpeechPaused(false);
+      }
+    }
+  }, [activeTab]);
+
+  // Elapsed Time & Progress ticker
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (speechPlaying && !speechPaused) {
+      interval = setInterval(() => {
+        setElapsedTime((prev) => {
+          const next = prev + 1;
+          if (estimatedTotalTime > 0) {
+            setSpeechProgress(Math.min(100, Math.round((next / estimatedTotalTime) * 100)));
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [speechPlaying, speechPaused, estimatedTotalTime]);
+
+  // Start synthesis helper
+  const startSpeaking = (textToSpeak: string, fromCharOffset = 0) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      toast.error("Web Speech API is not supported in this browser environment.");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const clean = cleanTextForSpeech(textToSpeak);
+    if (!clean) {
+      toast.error("No legible text found in this section.");
+      return;
+    }
+
+    const sliced = fromCharOffset > 0 ? clean.slice(fromCharOffset) : clean;
+    const utterance = new SpeechSynthesisUtterance(sliced);
+    utteranceRef.current = utterance;
+
+    if (voices.length > 0 && selectedVoiceIndex >= 0 && selectedVoiceIndex < voices.length) {
+      utterance.voice = voices[selectedVoiceIndex];
+    }
+    utterance.rate = speechRate;
+    utterance.pitch = 1.0;
+    utterance.lang = "en-US";
+
+    utterance.onstart = () => {
+      setSpeechPlaying(true);
+      setSpeechPaused(false);
+    };
+
+    utterance.onend = () => {
+      setSpeechPlaying(false);
+      setSpeechPaused(false);
+      setSpeechProgress(100);
+      setElapsedTime(estimatedTotalTime);
+      toast.info("Audio lecture section completed.");
+    };
+
+    utterance.onerror = (e) => {
+      if (e.error !== "interrupted" && e.error !== "canceled") {
+        console.warn("Speech synthesis notice:", e);
+      }
+      setSpeechPlaying(false);
+      setSpeechPaused(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+    setSpeechPlaying(true);
+    setSpeechPaused(false);
+  };
+
+  const handleToggleSpeech = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      toast.error("Web Speech API not supported.");
+      return;
+    }
+
+    if (speechPaused) {
+      window.speechSynthesis.resume();
+      setSpeechPaused(false);
+      setSpeechPlaying(true);
+      return;
+    }
+
+    if (speechPlaying) {
+      window.speechSynthesis.pause();
+      setSpeechPaused(true);
+      return;
+    }
+
+    startSpeaking(currentSectionText);
+  };
+
+  const handleStopSpeech = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeechPlaying(false);
+    setSpeechPaused(false);
+    setElapsedTime(0);
+    setSpeechProgress(0);
+  };
+
+  const handleSeek = (newSeconds: number) => {
+    setElapsedTime(newSeconds);
+    if (estimatedTotalTime > 0) {
+      setSpeechProgress(Math.min(100, Math.round((newSeconds / estimatedTotalTime) * 100)));
+    }
+    if (speechPlaying || speechPaused) {
+      const ratio = Math.max(0, Math.min(1, newSeconds / Math.max(1, estimatedTotalTime)));
+      const targetOffset = Math.floor(currentSectionText.length * ratio);
+      const safeOffset = currentSectionText.indexOf(" ", targetOffset);
+      const finalOffset = safeOffset !== -1 ? safeOffset + 1 : targetOffset;
+      startSpeaking(currentSectionText, finalOffset);
+    }
+  };
+
+  const handleSkipBack = () => {
+    const target = Math.max(0, elapsedTime - 10);
+    handleSeek(target);
+  };
+
+  const handleSkipForward = () => {
+    const target = Math.min(estimatedTotalTime - 2, elapsedTime + 10);
+    handleSeek(target);
+  };
+
+  const handleSetPlaybackRate = (rate: number) => {
+    setSpeechRate(rate);
+    if (speechPlaying && !speechPaused) {
+      const ratio = Math.max(0, Math.min(1, elapsedTime / Math.max(1, estimatedTotalTime)));
+      const targetOffset = Math.floor(currentSectionText.length * ratio);
+      const safeOffset = currentSectionText.indexOf(" ", targetOffset);
+      const finalOffset = safeOffset !== -1 ? safeOffset + 1 : targetOffset;
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(currentSectionText.slice(finalOffset));
+      utteranceRef.current = utterance;
+      if (voices.length > 0 && selectedVoiceIndex >= 0) {
+        utterance.voice = voices[selectedVoiceIndex];
+      }
+      utterance.rate = rate;
+      utterance.pitch = 1.0;
+      utterance.lang = "en-US";
+      utterance.onstart = () => {
+        setSpeechPlaying(true);
+        setSpeechPaused(false);
+      };
+      utterance.onend = () => {
+        setSpeechPlaying(false);
+        setSpeechPaused(false);
+        setSpeechProgress(100);
+      };
+      utterance.onerror = () => {
+        setSpeechPlaying(false);
+        setSpeechPaused(false);
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleSelectSection = (sectionId: string) => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setCurrentSectionId(sectionId);
+    setElapsedTime(0);
+    setSpeechProgress(0);
+    setSpeechPlaying(false);
+    setSpeechPaused(false);
+
+    const target = audioSections.find((s) => s.id === sectionId);
+    if (target) {
+      toast.info(`Switched to: ${target.title}`);
+      startSpeaking(target.text);
+    }
+  };
+
+  const handleVoiceChange = (idx: number) => {
+    setSelectedVoiceIndex(idx);
+    if (speechPlaying && !speechPaused) {
+      const ratio = Math.max(0, Math.min(1, elapsedTime / Math.max(1, estimatedTotalTime)));
+      const targetOffset = Math.floor(currentSectionText.length * ratio);
+      const safeOffset = currentSectionText.indexOf(" ", targetOffset);
+      const finalOffset = safeOffset !== -1 ? safeOffset + 1 : targetOffset;
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(currentSectionText.slice(finalOffset));
+      utteranceRef.current = utterance;
+      if (voices[idx]) {
+        utterance.voice = voices[idx];
+      }
+      utterance.rate = speechRate;
+      utterance.pitch = 1.0;
+      utterance.lang = "en-US";
+      utterance.onstart = () => {
+        setSpeechPlaying(true);
+        setSpeechPaused(false);
+      };
+      utterance.onend = () => {
+        setSpeechPlaying(false);
+        setSpeechPaused(false);
+        setSpeechProgress(100);
+      };
+      utterance.onerror = () => {
+        setSpeechPlaying(false);
+        setSpeechPaused(false);
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleCopyTranscript = () => {
+    if (!currentSectionText) return;
+    navigator.clipboard.writeText(currentSectionText);
+    setCopiedTranscript(true);
+    toast.success("Narration transcript copied to clipboard!");
+    setTimeout(() => setCopiedTranscript(false), 2000);
   };
 
   const bibtexContent = `@article{adams2025cryptographic,
@@ -579,31 +940,293 @@ export function BookPreviewReader({
           )}
 
           {activeTab === "audio" && (
-            <div className="flex flex-col items-center justify-center w-full max-w-md p-6 bg-card rounded-2xl border border-border shadow-md space-y-5">
-              <audio
-                ref={audioRef}
-                src={fileUrl || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"}
-                onEnded={() => setIsPlaying(false)}
-              />
+            <div className="w-full flex flex-col items-center max-w-4xl mx-auto space-y-6 py-2">
+              {/* Audio Synthesizer Master Card */}
+              <div className="w-full rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-md space-y-6 transition-all duration-300">
+                {/* Header Information Bar */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
+                      <Headphones className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-foreground text-sm sm:text-base">
+                          Universal Academic Audio Synthesizer
+                        </h3>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-mono py-0 px-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5"
+                        >
+                          Web Speech Engine
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Neural in-browser text-to-speech narration with dynamic chapters & provable bounds
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm">
-                <Headphones className="h-10 w-10 animate-pulse" />
-              </div>
+                  {/* Voice Selector */}
+                  {voices.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/40 px-2.5 py-1.5 rounded-xl border border-border/60">
+                      <Mic className="h-3.5 w-3.5 text-emerald-500" />
+                      <span className="text-[11px] font-semibold text-foreground/80 hidden sm:inline">Voice:</span>
+                      <select
+                        aria-label="Select audio speech voice"
+                        value={selectedVoiceIndex}
+                        onChange={(e) => handleVoiceChange(Number(e.target.value))}
+                        className="h-6 max-w-[160px] sm:max-w-[190px] text-[11px] font-medium bg-transparent text-foreground focus:outline-none cursor-pointer truncate"
+                      >
+                        {voices.map((v, idx) => (
+                          <option key={`${v.name}-${idx}`} value={idx} className="bg-popover text-popover-foreground">
+                            {v.name} ({v.lang})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
 
-              <div className="text-center">
-                <h3 className="font-bold text-foreground text-sm">{title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Audio Monograph Edition & Lecture</p>
-              </div>
+                {/* Hero Centerpiece: Monograph Title & 28-Bar Harmonic Waveform Visualizer */}
+                <div className="flex flex-col items-center text-center space-y-4 py-2">
+                  <div className="space-y-1 max-w-xl">
+                    <span className="text-[11px] uppercase tracking-wider font-bold text-primary font-mono">
+                      Active Lecture Stream
+                    </span>
+                    <h2 className="text-lg sm:text-xl font-extrabold text-foreground tracking-tight line-clamp-2">
+                      {title}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      By <span className="font-semibold text-foreground/90">{author}</span> • Synthesizing:{" "}
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        {currentSectionTitle}
+                      </span>
+                    </p>
+                  </div>
 
-              {/* Playback Controls */}
-              <div className="flex items-center gap-4">
-                <Button
-                  size="icon"
-                  className="rounded-full h-12 w-12 bg-primary text-primary-foreground shadow-sm"
-                  onClick={toggleAudio}
-                >
-                  {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
-                </Button>
+                  {/* 28-Bar Harmonic Waveform Visualizer */}
+                  <div className="flex items-center justify-center gap-1 sm:gap-1.5 h-16 w-full max-w-md px-4 py-2 rounded-2xl bg-muted/20 border border-border/50">
+                    {Array.from({ length: 28 }).map((_, i) => {
+                      const baseHeight = (Math.sin(i * 0.4) + 1.2) * 16 + 8;
+                      return (
+                        <motion.div
+                          key={i}
+                          animate={{
+                            height:
+                              speechPlaying && !speechPaused
+                                ? [
+                                    `${Math.max(8, baseHeight * 0.4)}px`,
+                                    `${Math.max(14, baseHeight * 1.5)}px`,
+                                    `${Math.max(6, baseHeight * 0.7)}px`,
+                                  ]
+                                : speechPaused
+                                ? `${Math.max(8, baseHeight * 0.5)}px`
+                                : "6px",
+                            opacity: speechPlaying && !speechPaused ? 1 : speechPaused ? 0.6 : 0.3,
+                          }}
+                          transition={{
+                            duration: 0.55 + (i % 7) * 0.08,
+                            repeat: speechPlaying && !speechPaused ? Infinity : 0,
+                            repeatType: "reverse",
+                            ease: "easeInOut",
+                          }}
+                          className={cn(
+                            "w-1 sm:w-1.5 rounded-full transition-colors",
+                            speechPlaying && !speechPaused
+                              ? "bg-gradient-to-t from-emerald-500 via-teal-400 to-indigo-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                              : "bg-muted-foreground/30"
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Section Selector Pills */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Radio className="h-3.5 w-3.5 text-primary" /> Select Manuscript Chapter to Narrate:
+                    </span>
+                    <span className="text-[11px] font-mono">
+                      {audioSections.length} Sections Available
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {audioSections.map((sec) => {
+                      const isSelected = currentSectionId === sec.id;
+                      return (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => handleSelectSection(sec.id)}
+                          className={cn(
+                            "flex flex-col items-start text-left p-2.5 rounded-xl border text-xs transition-all cursor-pointer",
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-2xs font-medium"
+                              : "border-border/70 bg-card hover:bg-muted/40 hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span
+                              className={cn(
+                                "font-bold truncate max-w-[170px]",
+                                isSelected ? "text-primary" : "text-foreground"
+                              )}
+                            >
+                              {sec.title}
+                            </span>
+                            {isSelected && speechPlaying && !speechPaused && (
+                              <span className="flex h-2 w-2 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+                            {sec.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Scrubber Progress Slider */}
+                <div className="space-y-1.5 pt-2">
+                  <div className="relative">
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(1, estimatedTotalTime)}
+                      value={elapsedTime}
+                      onChange={(e) => handleSeek(Number(e.target.value))}
+                      aria-label="Lecture progress scrubber"
+                      className="w-full h-2 bg-muted/60 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                    <span>{formatDuration(elapsedTime)}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                        {speechProgress}% Synthesized
+                      </span>
+                      <span>•</span>
+                      <span>Est. Total {formatDuration(estimatedTotalTime)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary Master Playback Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border/60">
+                  {/* Speed Controls (0.75x to 2.0x) */}
+                  <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/60">
+                    <Gauge className="h-3 w-3 text-muted-foreground ml-1.5 mr-0.5" />
+                    {[0.75, 1.0, 1.25, 1.5, 2.0].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => handleSetPlaybackRate(rate)}
+                        className={cn(
+                          "px-2 py-0.5 text-[11px] font-mono rounded-lg transition-all cursor-pointer",
+                          speechRate === rate
+                            ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                      >
+                        {rate}x
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Main Center Playback Control Cluster */}
+                  <div className="flex items-center gap-3">
+                    {/* Skip Back 10s */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleSkipBack}
+                      className="h-9 w-9 rounded-full border-border/80 hover:bg-muted cursor-pointer"
+                      title="Skip backward 10s"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+
+                    {/* Master Play / Pause Button */}
+                    <Button
+                      size="icon"
+                      onClick={handleToggleSpeech}
+                      className="rounded-full h-12 w-12 sm:h-14 sm:w-14 bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 cursor-pointer active:scale-95"
+                      title={speechPlaying && !speechPaused ? "Pause narration" : "Play narration"}
+                    >
+                      {speechPlaying && !speechPaused ? (
+                        <Pause className="h-6 w-6" />
+                      ) : (
+                        <Play className="h-6 w-6 ml-0.5" />
+                      )}
+                    </Button>
+
+                    {/* Skip Forward 10s */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleSkipForward}
+                      className="h-9 w-9 rounded-full border-border/80 hover:bg-muted cursor-pointer"
+                      title="Skip forward 10s"
+                    >
+                      <RotateCw className="h-4 w-4" />
+                    </Button>
+
+                    {/* Stop Button */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleStopSpeech}
+                      disabled={!speechPlaying && !speechPaused}
+                      className="h-9 w-9 rounded-full border-border/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 cursor-pointer"
+                      title="Stop lecture"
+                    >
+                      <Square className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Quick Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyTranscript}
+                      className="h-8 text-xs font-medium gap-1.5 cursor-pointer"
+                    >
+                      {copiedTranscript ? (
+                        <Check className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {copiedTranscript ? "Copied" : "Copy Script"}
+                      </span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Teleprompter Transcript Preview Drawer */}
+                <div className="rounded-xl border border-border/70 bg-muted/20 dark:bg-[#090d18] p-4 text-xs space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-2">
+                    <div className="flex items-center gap-1.5 text-primary">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Live Academic Narration Teleprompter</span>
+                    </div>
+                    <span className="font-mono text-muted-foreground lowercase">
+                      {currentSectionText.split(/\s+/).length} words
+                    </span>
+                  </div>
+                  <p className="font-serif text-[12px] text-foreground/90 leading-relaxed max-h-40 overflow-y-auto whitespace-pre-line pr-1">
+                    {currentSectionText}
+                  </p>
+                </div>
               </div>
             </div>
           )}

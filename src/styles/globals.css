@@ -64,60 +64,69 @@
   }
 
   .dark {
-    /* Slate & Indigo Clean Theme (Dark) */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Google AI Studio Eye-Soothing Obsidian Slate Theme */
+    /* Base Canvas: Pure neutral obsidian charcoal #131314 (avoids blue chromatic aberration and retina strain) */
+    --background: 240 3% 7.8%;
+    /* Primary Text: Soft warm grey #E3E3E3 (88.5% lightness) - Eliminates 100% white glare & optical halation */
+    --foreground: 210 6% 88.5%;
 
-    --card: 222.2 84% 7%;
-    --card-foreground: 210 40% 98%;
+    /* Card & Surface Layer 1: Elevated graphite slate #1E1F20 */
+    --card: 240 3% 12.2%;
+    --card-foreground: 210 6% 88.5%;
 
-    --popover: 222.2 84% 7%;
-    --popover-foreground: 210 40% 98%;
+    /* Popover & Dialog Layer 2: Ambient surface #232527 */
+    --popover: 210 4% 14.5%;
+    --popover-foreground: 210 6% 88.5%;
 
-    /* Primary: Vibrant Indigo #6366F1 */
-    --primary: 238.7 83.5% 66.7%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Primary Accent: Google AI Studio soft cornflower/periwinkle #A8C7FA */
+    --primary: 217 91% 82%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary & Layer 3: Velvet graphite pill surface #282A2C */
+    --secondary: 210 4% 16.5%;
+    --secondary-foreground: 210 6% 88.5%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Muted: Soft slate container surface */
+    --muted: 210 4% 16.5%;
+    /* Muted Foreground: Google calm neutral grey #9AA0A6 (62.5% lightness) - Restful sustained reading */
+    --muted-foreground: 215 7% 62.5%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Accent */
+    --accent: 210 4% 16.5%;
+    --accent-foreground: 210 6% 88.5%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 65% 58%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 238.7 83.5% 66.7%;
+    /* Borders & Inputs: Low-contrast subtle dividers #303134 (avoids harsh cage-like lines) */
+    --border: 215 5% 21%;
+    --input: 215 5% 21%;
+    --ring: 217 91% 82%;
 
-    /* Semantic badges */
-    --info: 217.2 91.2% 59.8%;
-    --info-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
+    /* Semantic Badges: Calmed, desaturated tones matching Google AI Studio */
+    --info: 217 91% 82%;
+    --info-foreground: 222 47% 11%;
+    --warning: 38 65% 62%;
     --warning-foreground: 48 96% 12%;
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 144.9 80.4% 10%;
+    --success: 144 40% 55%;
+    --success-foreground: 144 80% 12%;
 
     /* Charts */
-    --chart-1: 238.7 83.5% 66.7%;
-    --chart-2: 142.1 70.6% 45.3%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 0 62.8% 30.6%;
-    --chart-5: 280 65% 60%;
+    --chart-1: 217 91% 82%;
+    --chart-2: 144 40% 55%;
+    --chart-3: 38 65% 62%;
+    --chart-4: 0 65% 58%;
+    --chart-5: 275 45% 65%;
 
-    /* Sidebar */
-    --sidebar-background: 222.2 84% 7%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 238.7 83.5% 66.7%;
-    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 238.7 83.5% 66.7%;
+    /* Sidebar: Google AI Studio elevated nav sidebar #1E1F20 */
+    --sidebar-background: 240 3% 11.5%;
+    --sidebar-foreground: 210 6% 88.5%;
+    --sidebar-primary: 217 91% 82%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 210 4% 16.5%;
+    --sidebar-accent-foreground: 210 6% 88.5%;
+    --sidebar-border: 215 5% 18%;
+    --sidebar-ring: 217 91% 82%;
   }
 
   *, *::before, *::after {
@@ -125,11 +134,16 @@
     border-color: hsl(var(--border));
   }
 
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
+
   html,
   body {
     width: 100%;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
     position: relative;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
@@ -299,8 +313,8 @@
 
 .dark .bg-atmospheric-glow {
   background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(var(--primary) / 0.22), transparent 70%),
-    radial-gradient(circle 500px at 100% 100%, hsl(var(--info) / 0.08), transparent);
+    radial-gradient(ellipse 80% 45% at 50% -20%, hsl(var(--primary) / 0.07), transparent 70%),
+    radial-gradient(circle 500px at 100% 100%, hsl(var(--info) / 0.03), transparent);
 }
 
 /* Subtle Subtle Grid Pattern */
@@ -319,6 +333,12 @@
   border: 1px solid hsl(var(--border) / 0.8);
 }
 
+.dark .glass-panel {
+  background-color: hsl(var(--card) / 0.78);
+  border: 1px solid hsl(var(--border) / 0.55);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+}
+
 /* Interactive Card Elevation & Shimmer */
 .card-hover-effect {
   transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 250ms cubic-bezier(0.16, 1, 0.3, 1), border-color 250ms ease;
@@ -328,6 +348,12 @@
   transform: translateY(-2px);
   box-shadow: 0 12px 30px -10px hsl(var(--primary) / 0.12);
   border-color: hsl(var(--primary) / 0.4);
+}
+
+.dark .card-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -8px hsl(var(--primary) / 0.08);
+  border-color: hsl(var(--primary) / 0.35);
 }
 
 /* Academic Manuscript Drop Cap */
@@ -358,4 +384,215 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* ==============================================================================
+   Cinematic View Transitions & Smooth Theme Morphing
+   ============================================================================== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+.dark::view-transition-old(root) {
+  z-index: 1;
+}
+
+.dark::view-transition-new(root) {
+  z-index: 9999;
+}
+
+/* Progressive Fallback: Smooth CSS Transitions when View Transitions API is inactive */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              fill 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              stroke 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Adaptive browser autofill styling for light and dark themes */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #090d18 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ==============================================================================
+   Ultra-Premium Physics-Based Dropdowns & Options Revealing Animation Suite
+   ============================================================================== */
+
+@keyframes dropdown-spring-open {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(-6px);
+    filter: blur(4px);
+  }
+  65% {
+    opacity: 0.95;
+    transform: scale(1.008) translateY(0.5px);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes dropdown-spring-close {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+    filter: blur(2px);
+  }
+}
+
+@keyframes option-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialog-spring-open {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.95);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 0.96;
+    transform: translate(-50%, -50%) scale(1.008);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes dialog-spring-close {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+    filter: blur(3px);
+  }
+}
+
+/* Dropdown Menu Spring Opening */
+.animate-dropdown-spring-open {
+  animation: dropdown-spring-open 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, top center);
+}
+
+.animate-dropdown-spring-close {
+  animation: dropdown-spring-close 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* Dialog Spring Opening */
+.animate-dialog-spring-open {
+  animation: dialog-spring-open 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-dialog-spring-close {
+  animation: dialog-spring-close 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* Staggered Cascading Options Revealing */
+[data-state="open"] [role="menuitem"],
+[data-state="open"] [role="option"],
+[data-state="open"] .stagger-option {
+  animation: option-reveal 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-state="open"] [role="menuitem"]:nth-child(1),
+[data-state="open"] [role="option"]:nth-child(1),
+[data-state="open"] .stagger-option:nth-child(1) { animation-delay: 20ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(2),
+[data-state="open"] [role="option"]:nth-child(2),
+[data-state="open"] .stagger-option:nth-child(2) { animation-delay: 45ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(3),
+[data-state="open"] [role="option"]:nth-child(3),
+[data-state="open"] .stagger-option:nth-child(3) { animation-delay: 70ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(4),
+[data-state="open"] [role="option"]:nth-child(4),
+[data-state="open"] .stagger-option:nth-child(4) { animation-delay: 95ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(5),
+[data-state="open"] [role="option"]:nth-child(5),
+[data-state="open"] .stagger-option:nth-child(5) { animation-delay: 120ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(6),
+[data-state="open"] [role="option"]:nth-child(6),
+[data-state="open"] .stagger-option:nth-child(6) { animation-delay: 145ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(7),
+[data-state="open"] [role="option"]:nth-child(7),
+[data-state="open"] .stagger-option:nth-child(7) { animation-delay: 170ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(8),
+[data-state="open"] [role="option"]:nth-child(8),
+[data-state="open"] .stagger-option:nth-child(8) { animation-delay: 195ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(9),
+[data-state="open"] [role="option"]:nth-child(9),
+[data-state="open"] .stagger-option:nth-child(9) { animation-delay: 220ms; }
+
+[data-state="open"] [role="menuitem"]:nth-child(10),
+[data-state="open"] [role="option"]:nth-child(10),
+[data-state="open"] .stagger-option:nth-child(10) { animation-delay: 245ms; }
+
+
 

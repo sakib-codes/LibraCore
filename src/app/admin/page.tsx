@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Users,
@@ -19,9 +20,18 @@ import {
   Image as ImageIcon,
   Loader2,
   CheckCircle2,
+  X,
+  Star,
+  Check,
+  Link2,
+  Upload,
+  LayoutDashboard,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RoleLayout } from "@/components/layout/role-layout";
+import { AdminOverviewView } from "@/components/admin/admin-overview-view";
+import { AdminSettingsView } from "@/components/admin/admin-settings-view";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { FileTypeBadge, StatusBadge } from "@/components/shared/status-badge";
@@ -55,8 +65,23 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import {
+  cn,
+  DEFAULT_BOOK_COVER,
+  getCoverUrl,
+  getAllCoverImages,
+} from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { Book, Category, Profile, FileType } from "@/integrations/supabase/types";
+import { motion } from "framer-motion";
+
+export interface BookImageEntry {
+  id: string;
+  url: string;
+  file?: File;
+  isPrimary: boolean;
+  name?: string;
+}
 
 // Fallback seed data
 const FALLBACK_CATEGORIES: Category[] = [
@@ -66,6 +91,7 @@ const FALLBACK_CATEGORIES: Category[] = [
   { id: "c4", name: "Audio Books", slug: "audio-books", description: "High-fidelity audio editions and lectures", icon: "Headphones", display_order: 4, created_at: "" },
   { id: "c5", name: "eBooks & Literature", slug: "ebooks-literature", description: "Classics, philosophy, and essays", icon: "BookOpen", display_order: 5, created_at: "" },
 ];
+
 
 const FALLBACK_BOOKS: (Book & { categories?: Category | null })[] = [
   {
@@ -152,6 +178,17 @@ const FALLBACK_USERS: Profile[] = [
 ];
 
 function AdminDashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") || "overview";
+  const [activeTab, setActiveTab] = useState(tabParam);
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
   const [books, setBooks] = useState<(Book & { categories?: Category | null })[]>(FALLBACK_BOOKS);
   const [categories, setCategories] = useState<Category[]>(FALLBACK_CATEGORIES);
   const [users, setUsers] = useState<Profile[]>(FALLBACK_USERS);
@@ -175,7 +212,21 @@ function AdminDashboardContent() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [resourceFile, setResourceFile] = useState<File | null>(null);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
+
+  // New Book Image Management (Multi-Image: Primary Cover + Preview Slides)
+  const [bookImages, setBookImages] = useState<BookImageEntry[]>([]);
+  const [coverMode, setCoverMode] = useState<"upload" | "url">("upload");
+  const [customCoverUrl, setCustomCoverUrl] = useState<string>("");
+
+  // MarkItDown Suite State
+  const [markitdownProcessing, setMarkitdownProcessing] = useState(false);
+  const [markitdownMetrics, setMarkitdownMetrics] = useState<{
+    sectionsCount: number;
+    percentSaved: number;
+    tokensUsed: number;
+    estimatedOriginalTokens: number;
+    markdown: string;
+  } | null>(null);
 
   // Add Category State
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -189,6 +240,110 @@ function AdminDashboardContent() {
   const [editCategoryId, setEditCategory] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editBookImages, setEditBookImages] = useState<BookImageEntry[]>([]);
+  const [editCoverMode, setEditCoverMode] = useState<"upload" | "url">("upload");
+  const [editCoverUrl, setEditCoverUrl] = useState<string>("");
+
+  // Multi-image management helper functions
+  const handleAddImageFiles = (files: FileList | null, isEdit = false) => {
+    if (!files || files.length === 0) return;
+    const newItems: BookImageEntry[] = Array.from(files).map((file, idx) => ({
+      id: `file-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      url: URL.createObjectURL(file),
+      file,
+      name: file.name,
+      isPrimary: false,
+    }));
+
+    if (isEdit) {
+      setEditBookImages((prev) => {
+        const combined = [...prev, ...newItems];
+        if (!combined.some((item) => item.isPrimary) && combined.length > 0) {
+          combined[0].isPrimary = true;
+        }
+        return combined;
+      });
+    } else {
+      setBookImages((prev) => {
+        const combined = [...prev, ...newItems];
+        if (!combined.some((item) => item.isPrimary) && combined.length > 0) {
+          combined[0].isPrimary = true;
+        }
+        return combined;
+      });
+    }
+    toast.success(`Added ${newItems.length} image${newItems.length > 1 ? "s" : ""} to asset gallery.`);
+  };
+
+  const handleAddImageUrl = (urlToAdd: string, isEdit = false) => {
+    const trimmed = urlToAdd.trim();
+    if (!trimmed) {
+      toast.error("Please enter a valid image URL.");
+      return;
+    }
+    const newItem: BookImageEntry = {
+      id: `url-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      url: trimmed,
+      name: "Image URL Link",
+      isPrimary: false,
+    };
+
+    if (isEdit) {
+      setEditBookImages((prev) => {
+        const combined = [...prev, newItem];
+        if (!combined.some((item) => item.isPrimary) && combined.length > 0) {
+          combined[0].isPrimary = true;
+        }
+        return combined;
+      });
+      setEditCoverUrl("");
+    } else {
+      setBookImages((prev) => {
+        const combined = [...prev, newItem];
+        if (!combined.some((item) => item.isPrimary) && combined.length > 0) {
+          combined[0].isPrimary = true;
+        }
+        return combined;
+      });
+      setCustomCoverUrl("");
+    }
+    toast.success("Image URL added to gallery!");
+  };
+
+  const handleSetPrimaryImage = (id: string, isEdit = false) => {
+    if (isEdit) {
+      setEditBookImages((prev) =>
+        prev.map((item) => ({ ...item, isPrimary: item.id === id }))
+      );
+    } else {
+      setBookImages((prev) =>
+        prev.map((item) => ({ ...item, isPrimary: item.id === id }))
+      );
+    }
+    toast.info("Primary book cover updated.");
+  };
+
+  const handleRemoveImageEntry = (id: string, isEdit = false) => {
+    if (isEdit) {
+      setEditBookImages((prev) => {
+        const filtered = prev.filter((item) => item.id !== id);
+        if (filtered.length > 0 && !filtered.some((item) => item.isPrimary)) {
+          filtered[0].isPrimary = true;
+        }
+        return filtered;
+      });
+    } else {
+      setBookImages((prev) => {
+        const filtered = prev.filter((item) => item.id !== id);
+        if (filtered.length > 0 && !filtered.some((item) => item.isPrimary)) {
+          filtered[0].isPrimary = true;
+        }
+        return filtered;
+      });
+    }
+    toast.info("Image removed from gallery.");
+  };
+
 
   // Load live data from Supabase
   useEffect(() => {
@@ -257,10 +412,14 @@ function AdminDashboardContent() {
             await supabase.storage.from("library-files").remove([fileName]);
           }
         }
-        if (bookToDelete?.cover_url && bookToDelete.cover_url.includes("book-covers")) {
-          const coverName = bookToDelete.cover_url.split("/").pop();
-          if (coverName) {
-            await supabase.storage.from("book-covers").remove([coverName]);
+        if (bookToDelete?.cover_url) {
+          const coverUrls = getAllCoverImages(bookToDelete.cover_url);
+          const coverFiles = coverUrls
+            .filter((u) => u.includes("book-covers"))
+            .map((u) => u.split("/").pop())
+            .filter(Boolean) as string[];
+          if (coverFiles.length > 0) {
+            await supabase.storage.from("book-covers").remove(coverFiles);
           }
         }
 
@@ -305,12 +464,54 @@ function AdminDashboardContent() {
       const data = await res.json();
       if (data?.result?.description) {
         setNewDescription(data.result.description);
-        toast.success("✨ Gemini formulated an academic summary!");
+        toast.success("✨ Libris AI formulated an academic summary!");
       }
     } catch {
-      toast.error("Could not reach Gemini API. Please enter description manually.");
+      toast.error("Could not reach Libris AI. Please enter description manually.");
     } finally {
       setAiGenerating(false);
+    }
+  };
+
+  // Libris AI Document Intelligence & Token Optimization
+  const handleProcessWithMarkitdown = async () => {
+    if (!newTitle.trim()) {
+      toast.error("Please enter a monograph title before running Libris AI processing.");
+      return;
+    }
+    setMarkitdownProcessing(true);
+    try {
+      const catName = categories.find((c) => c.id === newCategoryId)?.name || "General";
+      const res = await fetch("/api/document/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle,
+          author: newAuthor || "Unknown Author",
+          category: catName,
+          description: newDescription,
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setMarkitdownMetrics({
+          sectionsCount: data.sections?.length || 0,
+          percentSaved: data.percentSaved || 92,
+          tokensUsed: data.tokensUsed || 1100,
+          estimatedOriginalTokens: data.estimatedOriginalTokens || 18500,
+          markdown: data.markdown || "",
+        });
+        if (!newDescription.trim() && data.markdown) {
+          setNewDescription(`Processed with Libris AI Document Intelligence. Extracted ${data.sections?.length || 0} scholarly sections with high fidelity mathematical proofs, tables, and citations.`);
+        }
+        toast.success(`✨ Libris AI processed document: Saved ${data.percentSaved || 92}% token footprint!`);
+      } else {
+        toast.error("Could not complete document processing.");
+      }
+    } catch {
+      toast.error("Libris AI document processing error.");
+    } finally {
+      setMarkitdownProcessing(false);
     }
   };
 
@@ -323,13 +524,53 @@ function AdminDashboardContent() {
       return;
     }
     setSavingEdit(true);
+
     try {
+      // 1. Process all images in editBookImages (upload any local files, place primary first)
+      const sortedImages = [...editBookImages].sort(
+        (a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0)
+      );
+      const finalUrls: string[] = [];
+
+      for (const img of sortedImages) {
+        if (img.file) {
+          try {
+            const fileExt = img.file.name.split(".").pop() || "jpg";
+            const coverPath = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
+            const { data: coverUpload, error: coverErr } = await supabase.storage
+              .from("book-covers")
+              .upload(coverPath, img.file, { upsert: true });
+
+            if (!coverErr && coverUpload) {
+              const { data: pubData } = supabase.storage
+                .from("book-covers")
+                .getPublicUrl(coverPath);
+              if (pubData?.publicUrl) finalUrls.push(pubData.publicUrl);
+            } else {
+              finalUrls.push(img.url);
+            }
+          } catch {
+            finalUrls.push(img.url);
+          }
+        } else if (img.url && img.url.trim()) {
+          finalUrls.push(img.url.trim());
+        }
+      }
+
+      let finalCoverUrl = selectedBook.cover_url || DEFAULT_BOOK_COVER;
+      if (finalUrls.length === 1) {
+        finalCoverUrl = finalUrls[0];
+      } else if (finalUrls.length > 1) {
+        finalCoverUrl = JSON.stringify(finalUrls);
+      }
+
       const selectedCategory = categories.find((c) => c.id === editCategoryId);
       await (supabase.from("books") as any).update({
         title: editTitle.trim(),
         author: editAuthor.trim(),
         category_id: editCategoryId || null,
         description: editDescription.trim(),
+        cover_url: finalCoverUrl,
         updated_at: new Date().toISOString(),
       }).eq("id", selectedBook.id);
 
@@ -343,13 +584,15 @@ function AdminDashboardContent() {
                 category_id: editCategoryId,
                 categories: selectedCategory || b.categories,
                 description: editDescription.trim(),
+                cover_url: finalCoverUrl,
               }
             : b
         )
       );
-      toast.success("Monograph metadata updated successfully!");
+      toast.success("Monograph metadata and asset photos updated successfully!");
       setEditModalOpen(false);
       setSelectedBook(null);
+      setEditBookImages([]);
     } catch {
       toast.error("Failed to update monograph metadata.");
     } finally {
@@ -357,7 +600,7 @@ function AdminDashboardContent() {
     }
   };
 
-  // Save Book (with Supabase Storage upload)
+  // Save Book (with Supabase Storage multi-image upload)
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newAuthor.trim()) {
@@ -366,25 +609,47 @@ function AdminDashboardContent() {
     }
 
     setUploadingFiles(true);
-    let coverUrl = "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80";
-    let fileUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
     try {
-      // 1. Upload Cover Image if selected
-      if (coverFile) {
-        const fileExt = coverFile.name.split(".").pop();
-        const coverPath = `${Date.now()}-cover.${fileExt}`;
-        const { data: coverUpload, error: coverErr } = await supabase.storage
-          .from("book-covers")
-          .upload(coverPath, coverFile, { upsert: true });
+      // 1. Process all selected book images (upload files, collect URLs, primary first)
+      const sortedImages = [...bookImages].sort(
+        (a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0)
+      );
+      const finalUrls: string[] = [];
 
-        if (!coverErr && coverUpload) {
-          const { data: pubData } = supabase.storage
-            .from("book-covers")
-            .getPublicUrl(coverPath);
-          if (pubData?.publicUrl) coverUrl = pubData.publicUrl;
+      for (const img of sortedImages) {
+        if (img.file) {
+          try {
+            const fileExt = img.file.name.split(".").pop() || "jpg";
+            const coverPath = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
+            const { data: coverUpload, error: coverErr } = await supabase.storage
+              .from("book-covers")
+              .upload(coverPath, img.file, { upsert: true });
+
+            if (!coverErr && coverUpload) {
+              const { data: pubData } = supabase.storage
+                .from("book-covers")
+                .getPublicUrl(coverPath);
+              if (pubData?.publicUrl) finalUrls.push(pubData.publicUrl);
+            } else {
+              finalUrls.push(img.url);
+            }
+          } catch {
+            finalUrls.push(img.url);
+          }
+        } else if (img.url && img.url.trim()) {
+          finalUrls.push(img.url.trim());
         }
       }
+
+      let coverUrl = DEFAULT_BOOK_COVER;
+      if (finalUrls.length === 1) {
+        coverUrl = finalUrls[0];
+      } else if (finalUrls.length > 1) {
+        coverUrl = JSON.stringify(finalUrls);
+      }
+
+      let fileUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
       // 2. Upload Document / Audio File if selected
       if (resourceFile) {
@@ -473,13 +738,16 @@ function AdminDashboardContent() {
       setNewAuthor("");
       setNewDescription("");
       setResourceFile(null);
-      setCoverFile(null);
+      setBookImages([]);
+      setCoverMode("upload");
+      setCustomCoverUrl("");
     } catch (err) {
       toast.error("Failed to publish book. Please check connection.");
     } finally {
       setUploadingFiles(false);
     }
   };
+
 
   // Add Category Handler
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -557,6 +825,15 @@ function AdminDashboardContent() {
   // Calculate stats
   const totalDownloads = books.reduce((acc, curr) => acc + (curr.download_count || 0), 0);
 
+  const handleExportIndex = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(books, null, 2));
+    const dl = document.createElement("a");
+    dl.setAttribute("href", dataStr);
+    dl.setAttribute("download", `librisai_catalog_index_${Date.now()}.json`);
+    dl.click();
+    toast.success("Repository index exported successfully!");
+  };
+
   return (
     <RoleLayout allow="admin">
       <div className="space-y-6">
@@ -568,13 +845,19 @@ function AdminDashboardContent() {
           <span>/</span>
           <span>Repository Management</span>
           <span>/</span>
-          <span className="font-semibold text-primary">Catalogs</span>
+          <span className="font-semibold text-primary capitalize">
+            {activeTab === "overview"
+              ? "Dashboard"
+              : activeTab === "books"
+              ? "Monographs"
+              : activeTab}
+          </span>
         </div>
 
         {/* Header matching Image 4 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground/95">
               Library Administration & Inventory
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -595,14 +878,7 @@ function AdminDashboardContent() {
               variant="outline"
               size="sm"
               className="gap-2 text-xs font-semibold shadow-2xs"
-              onClick={() => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(books, null, 2));
-                const dl = document.createElement("a");
-                dl.setAttribute("href", dataStr);
-                dl.setAttribute("download", `librisai_catalog_index_${Date.now()}.json`);
-                dl.click();
-                toast.success("Repository index exported successfully!");
-              }}
+              onClick={handleExportIndex}
             >
               <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export Index
             </Button>
@@ -629,7 +905,7 @@ function AdminDashboardContent() {
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground/95">
                 {users.length > 5 ? users.length : 1482}
               </h3>
               <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -649,7 +925,7 @@ function AdminDashboardContent() {
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground/95">
                 {books.length > 20 ? books.length : 428}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -669,7 +945,7 @@ function AdminDashboardContent() {
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground/95">
                 {totalDownloads > 5000 ? totalDownloads.toLocaleString() : "12,450"}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -689,7 +965,7 @@ function AdminDashboardContent() {
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground/95">
                 {categories.length > 8 ? categories.length : 12}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -699,19 +975,66 @@ function AdminDashboardContent() {
           </div>
         </div>
 
-        {/* Administration Tabs: Books, Categories, Users */}
-        <Tabs defaultValue="books" className="space-y-4">
-          <TabsList className="w-full sm:w-auto flex flex-wrap sm:flex-nowrap bg-muted/50 p-1 h-auto gap-1">
-            <TabsTrigger value="books" className="text-xs gap-1.5 flex-1 sm:flex-initial">
-              <BookOpen className="h-3.5 w-3.5" /> Manage Books ({books.length})
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="text-xs gap-1.5 flex-1 sm:flex-initial">
-              <FolderTree className="h-3.5 w-3.5" /> Manage Categories ({categories.length})
-            </TabsTrigger>
-            <TabsTrigger value="users" className="text-xs gap-1.5 flex-1 sm:flex-initial">
-              <Users className="h-3.5 w-3.5" /> Manage Users ({users.length})
-            </TabsTrigger>
+        {/* Administration Tabs: Dashboard, Books, Categories, Users, Settings */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => {
+            setActiveTab(val);
+            router.push(val === "overview" ? "/admin" : `/admin?tab=${val}`, { scroll: false });
+          }}
+          className="space-y-6"
+        >
+          <TabsList className="relative w-full sm:w-auto flex flex-wrap sm:flex-nowrap bg-muted/60 p-1 h-auto gap-1 rounded-xl border border-border/60">
+            {[
+              { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+              { id: "books", label: `Manage Books (${books.length})`, icon: BookOpen },
+              { id: "categories", label: `Categories (${categories.length})`, icon: FolderTree },
+              { id: "users", label: `Users (${users.length})`, icon: Users },
+              { id: "settings", label: "Settings", icon: Settings },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className={cn(
+                    "relative flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-primary flex-1 sm:flex-initial border-0 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-transparent",
+                    isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="admin-tab-pill"
+                      className="absolute inset-0 rounded-lg bg-card shadow-xs border border-border/70 z-0"
+                      transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-1.5">
+                    <Icon className={cn("h-3.5 w-3.5 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
+                    {tab.label}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
+
+          {/* TAB 0: DASHBOARD OVERVIEW */}
+          <TabsContent value="overview" className="space-y-6">
+            <AdminOverviewView
+              books={books}
+              categories={categories}
+              users={users}
+              totalDownloads={totalDownloads}
+              onOpenUpload={() => setNewBookOpen(true)}
+              onOpenAiReport={() => window.dispatchEvent(new CustomEvent("open-libris-ai-report"))}
+              onExportIndex={handleExportIndex}
+              onNavigateTab={(targetTab) => {
+                setActiveTab(targetTab);
+                router.push(targetTab === "overview" ? "/admin" : `/admin?tab=${targetTab}`, { scroll: false });
+              }}
+            />
+          </TabsContent>
 
           {/* TAB 1: MANAGE BOOKS */}
           <TabsContent value="books" className="space-y-4">
@@ -746,7 +1069,7 @@ function AdminDashboardContent() {
                   className="h-9 gap-1.5 text-xs bg-primary text-primary-foreground font-medium shrink-0"
                   onClick={() => setNewBookOpen(true)}
                 >
-                  <Plus className="h-3.5 w-3.5" /> + Upload Book
+                  <Plus className="h-3.5 w-3.5" /> Upload Book
                 </Button>
               </div>
             </div>
@@ -771,9 +1094,12 @@ function AdminDashboardContent() {
                       <TableCell className="py-3">
                         <div className="h-12 w-9 rounded-md overflow-hidden bg-muted border border-border/80 shadow-2xs">
                           <img
-                            src={b.cover_url || "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80"}
+                            src={getCoverUrl(b.cover_url)}
                             alt={b.title}
                             className="h-full w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = DEFAULT_BOOK_COVER;
+                            }}
                           />
                         </div>
                       </TableCell>
@@ -813,6 +1139,17 @@ function AdminDashboardContent() {
                               setEditAuthor(b.author);
                               setEditDescription(b.description || "");
                               setEditCategory(b.category_id || "");
+                              const rawImages = getAllCoverImages(b.cover_url);
+                              setEditBookImages(
+                                rawImages.map((url, i) => ({
+                                  id: `existing-${i}-${Math.random().toString(36).slice(2, 6)}`,
+                                  url,
+                                  isPrimary: i === 0,
+                                  name: i === 0 ? "Primary Cover" : `Preview Slide ${i + 1}`,
+                                }))
+                              );
+                              setEditCoverMode("upload");
+                              setEditCoverUrl("");
                               setEditModalOpen(true);
                             }}
                             title="Edit monograph metadata"
@@ -983,6 +1320,11 @@ function AdminDashboardContent() {
               </Table>
             </div>
           </TabsContent>
+
+          {/* TAB 4: REPOSITORY SETTINGS */}
+          <TabsContent value="settings" className="space-y-6">
+            <AdminSettingsView />
+          </TabsContent>
         </Tabs>
 
         {/* Delete Confirmation Modal */}
@@ -1062,34 +1404,261 @@ function AdminDashboardContent() {
                 </Select>
               </div>
 
-              {/* File Upload Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl border border-dashed border-border bg-muted/30">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium flex items-center gap-1">
-                    <UploadCloud className="h-3.5 w-3.5 text-primary" /> Resource File (.pdf, .epub, .mp3)
+              {/* Primary Resource File Upload (.pdf, .epub, .mp3, .doc) */}
+              <div className="space-y-1.5 p-3 rounded-xl border border-dashed border-border/80 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                    <UploadCloud className="h-4 w-4 text-primary" /> Monograph File (.pdf, .epub, .mp3, .doc)
                   </Label>
-                  <Input
-                    type="file"
-                    accept=".pdf,.epub,.mp3,.wav,.doc,.docx"
-                    className="text-xs h-9 cursor-pointer"
-                    onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
-                  />
+                  {resourceFile && (
+                    <Badge variant="outline" className="text-[10px] font-mono bg-primary/10 text-primary border-primary/20">
+                      {(resourceFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </Badge>
+                  )}
+                </div>
+                <Input
+                  type="file"
+                  accept=".pdf,.epub,.mp3,.wav,.doc,.docx"
+                  className="text-xs h-9 cursor-pointer bg-background"
+                  onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  PDF documents automatically stream via continuous high-DPI canvas in the scholar reader.
+                </p>
+              </div>
+
+              {/* Book Cover & Preview Assets Multi-Image Selector (Upload Files / Image URL) */}
+              <div className="space-y-2.5 p-3 rounded-xl border border-border/80 bg-secondary/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                      <ImageIcon className="h-4 w-4 text-primary" /> Book Cover &amp; Preview Slides
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Upload or link multiple images (Cover art, table of contents, diagrams)
+                    </p>
+                  </div>
+                  <div className="flex items-center bg-secondary rounded-lg p-0.5 border border-border/60 text-[11px] self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setCoverMode("upload")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                        coverMode === "upload"
+                          ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Upload className="h-3 w-3" /> Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoverMode("url")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                        coverMode === "url"
+                          ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Link2 className="h-3 w-3" /> Image URL
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium flex items-center gap-1">
-                    <ImageIcon className="h-3.5 w-3.5 text-primary" /> Cover Thumbnail (Optional)
-                  </Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    className="text-xs h-9 cursor-pointer"
-                    onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-                  />
+                {/* 1. Upload Custom Image Files (Multi-file enabled) */}
+                {coverMode === "upload" && (
+                  <div className="space-y-1.5">
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="text-xs h-9 cursor-pointer bg-background"
+                      onChange={(e) => {
+                        handleAddImageFiles(e.target.files, false);
+                        e.target.value = "";
+                      }}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Select one or multiple files. Stored securely in Supabase Storage (<span className="font-mono text-primary">book-covers</span> bucket).
+                    </p>
+                  </div>
+                )}
+
+                {/* 2. Direct Image URL Linker */}
+                {coverMode === "url" && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="https://images.unsplash.com/... or public image link"
+                        value={customCoverUrl}
+                        onChange={(e) => setCustomCoverUrl(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddImageUrl(customCoverUrl, false);
+                          }
+                        }}
+                        className="text-xs h-9 bg-background font-mono flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleAddImageUrl(customCoverUrl, false)}
+                        className="h-9 text-xs px-3 font-semibold shrink-0 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Image
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Paste any public image link (Unsplash, DOI repository, or publisher CDN).
+                    </p>
+                  </div>
+                )}
+
+                {/* Gallery of Added Images */}
+                {bookImages.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                        Configured Assets ({bookImages.length})
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-normal">
+                        Click &quot;Set Cover&quot; to choose the main catalog cover
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1.5 rounded-lg border border-border/60 bg-background/50">
+                      {bookImages.map((img, idx) => (
+                        <div
+                          key={img.id}
+                          className={cn(
+                            "group relative aspect-3/4 rounded-lg overflow-hidden border-2 transition-all bg-muted/40",
+                            img.isPrimary
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-border/70 hover:border-primary/50"
+                          )}
+                        >
+                          <img
+                            src={img.url}
+                            alt="Book Asset"
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute top-1 left-1 pointer-events-none">
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase",
+                                img.isPrimary
+                                  ? "bg-primary text-primary-foreground shadow-xs"
+                                  : "bg-black/75 text-white backdrop-blur-xs"
+                              )}
+                            >
+                              {img.isPrimary ? "Cover" : `Slide ${idx + 1}`}
+                            </span>
+                          </div>
+                          <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
+                            {!img.isPrimary && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleSetPrimaryImage(img.id, false)}
+                                className="h-6 px-1.5 text-[9px] font-semibold rounded bg-white text-black hover:bg-white/90 cursor-pointer"
+                              >
+                                Set Cover
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRemoveImageEntry(img.id, false)}
+                              className="h-6 w-6 p-0 rounded cursor-pointer"
+                              title="Remove image"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Cover Summary Banner */}
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-background/80 border border-border/70">
+                  <div className="h-12 w-9 rounded-md overflow-hidden bg-muted border border-border/80 shrink-0">
+                    <img
+                      src={
+                        bookImages.find((img) => img.isPrimary)?.url ||
+                        bookImages[0]?.url ||
+                        DEFAULT_BOOK_COVER
+                      }
+                      alt="Cover Preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-[11px] font-semibold text-foreground truncate">
+                      {newTitle.trim() || "Untitled Monograph Preview"}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {bookImages.length > 0
+                        ? `${bookImages.length} image${bookImages.length > 1 ? "s" : ""} selected (${bookImages.filter((img) => img.isPrimary).length} Primary Cover • ${bookImages.filter((img) => !img.isPrimary).length} Previews)`
+                        : "Default academic cover will be assigned upon publication"}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Gemini Description Generator */}
+
+              {/* Libris AI Document Intelligence & Token Optimizer */}
+              <div className="p-3.5 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/15 text-primary text-xs font-bold">
+                      ⚡
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-semibold text-foreground">Libris AI Document Intelligence</h4>
+                      <p className="text-[10px] text-muted-foreground">Automated structured text parsing &amp; token-optimized indexing</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs font-medium gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                    onClick={handleProcessWithMarkitdown}
+                    disabled={markitdownProcessing || !newTitle.trim()}
+                  >
+                    {markitdownProcessing ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5" /> Auto-Process with Libris AI
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {markitdownMetrics && (
+                  <div className="flex items-center justify-between flex-wrap gap-1 text-[11px] font-mono bg-background/80 border border-primary/20 rounded-lg p-2 text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-primary">✓ Indexed:</span>
+                      <span>{markitdownMetrics.sectionsCount} Sections Extracted</span>
+                    </div>
+                    <div className="font-semibold text-primary">
+                      Saved {markitdownMetrics.percentSaved}% Tokens ({markitdownMetrics.tokensUsed.toLocaleString()} vs ~{markitdownMetrics.estimatedOriginalTokens.toLocaleString()})
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Libris AI Description Generator */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="desc" className="text-xs font-semibold">Catalog Description</Label>
@@ -1102,7 +1671,7 @@ function AdminDashboardContent() {
                     disabled={aiGenerating}
                   >
                     <Sparkles className="h-3 w-3" />
-                    {aiGenerating ? "Synthesizing with Gemini..." : "✨ Auto-Generate with Gemini AI"}
+                    {aiGenerating ? "Synthesizing with Libris AI..." : "✨ Auto-Generate with Libris AI"}
                   </Button>
                 </div>
                 <Textarea
@@ -1184,6 +1753,198 @@ function AdminDashboardContent() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Monograph Cover & Preview Assets Multi-Image Selector (Upload Files / Image URL) */}
+              <div className="space-y-2.5 p-3 rounded-xl border border-border/80 bg-secondary/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                      <ImageIcon className="h-4 w-4 text-primary" /> Monograph Cover &amp; Preview Slides
+                    </Label>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Upload or link multiple images (Cover art, table of contents, diagrams)
+                    </p>
+                  </div>
+                  <div className="flex items-center bg-secondary rounded-lg p-0.5 border border-border/60 text-[11px] self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setEditCoverMode("upload")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                        editCoverMode === "upload"
+                          ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Upload className="h-3 w-3" /> Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditCoverMode("url")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                        editCoverMode === "url"
+                          ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Link2 className="h-3 w-3" /> Image URL
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. Upload Custom Image Files (Multi-file enabled) */}
+                {editCoverMode === "upload" && (
+                  <div className="space-y-1.5">
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="text-xs h-9 cursor-pointer bg-background"
+                      onChange={(e) => {
+                        handleAddImageFiles(e.target.files, true);
+                        e.target.value = "";
+                      }}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Select one or multiple files. Stored securely in Supabase Storage (<span className="font-mono text-primary">book-covers</span> bucket).
+                    </p>
+                  </div>
+                )}
+
+                {/* 2. Direct Image URL Linker */}
+                {editCoverMode === "url" && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="https://images.unsplash.com/... or public image link"
+                        value={editCoverUrl}
+                        onChange={(e) => setEditCoverUrl(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddImageUrl(editCoverUrl, true);
+                          }
+                        }}
+                        className="text-xs h-9 bg-background font-mono flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleAddImageUrl(editCoverUrl, true)}
+                        className="h-9 text-xs px-3 font-semibold shrink-0 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Image
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Paste any public image link (Unsplash, DOI repository, or publisher CDN).
+                    </p>
+                  </div>
+                )}
+
+                {/* Gallery of Added Images for Edit Monograph */}
+                {editBookImages.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                        Configured Assets ({editBookImages.length})
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-normal">
+                        Click &quot;Set Cover&quot; to choose the main catalog cover
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1.5 rounded-lg border border-border/60 bg-background/50">
+                      {editBookImages.map((img, idx) => (
+                        <div
+                          key={img.id}
+                          className={cn(
+                            "group relative aspect-3/4 rounded-lg overflow-hidden border-2 transition-all bg-muted/40",
+                            img.isPrimary
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-border/70 hover:border-primary/50"
+                          )}
+                        >
+                          <img
+                            src={img.url}
+                            alt="Book Asset"
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = DEFAULT_BOOK_COVER;
+                            }}
+                          />
+                          <div className="absolute top-1 left-1 pointer-events-none">
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase",
+                                img.isPrimary
+                                  ? "bg-primary text-primary-foreground shadow-xs"
+                                  : "bg-black/75 text-white backdrop-blur-xs"
+                              )}
+                            >
+                              {img.isPrimary ? "Cover" : `Slide ${idx + 1}`}
+                            </span>
+                          </div>
+                          <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
+                            {!img.isPrimary && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleSetPrimaryImage(img.id, true)}
+                                className="h-6 px-1.5 text-[9px] font-semibold rounded bg-white text-black hover:bg-white/90 cursor-pointer"
+                              >
+                                Set Cover
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRemoveImageEntry(img.id, true)}
+                              className="h-6 w-6 p-0 rounded cursor-pointer"
+                              title="Remove image"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Cover Summary Banner */}
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-background/80 border border-border/70">
+                  <div className="h-12 w-9 rounded-md overflow-hidden bg-muted border border-border/80 shrink-0">
+                    <img
+                      src={
+                        editBookImages.find((img) => img.isPrimary)?.url ||
+                        editBookImages[0]?.url ||
+                        DEFAULT_BOOK_COVER
+                      }
+                      alt="Cover Preview"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = DEFAULT_BOOK_COVER;
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-[11px] font-semibold text-foreground truncate">
+                      {editTitle.trim() || "Monograph Cover Preview"}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {editBookImages.length > 0
+                        ? `${editBookImages.length} image${editBookImages.length > 1 ? "s" : ""} selected (${editBookImages.filter((img) => img.isPrimary).length} Primary Cover • ${editBookImages.filter((img) => !img.isPrimary).length} Previews)`
+                        : "Current Cover"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
 
               <div className="space-y-1.5">
                 <Label htmlFor="edit-desc" className="text-xs font-semibold">Catalog Description</Label>

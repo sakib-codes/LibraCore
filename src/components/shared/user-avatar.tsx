@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Maximize2, ExternalLink } from "lucide-react";
+import { Maximize2, ExternalLink, User as UserIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { initials, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export function UserAvatar({
   name,
@@ -26,24 +26,34 @@ export function UserAvatar({
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Validate photo URL: ensure it is a real image and not a dummy Unsplash photo
+  const hasValidPhoto = Boolean(
+    path &&
+    typeof path === "string" &&
+    path.trim().length > 0 &&
+    !path.includes("images.unsplash.com")
+  );
+
   const avatar = (
     <Avatar
       className={cn(
-        "h-9 w-9",
+        "h-9 w-9 bg-muted/80 border border-border/70 select-none",
         previewable &&
-          path &&
+          hasValidPhoto &&
           "cursor-pointer transition-transform hover:scale-105 active:scale-95 hover:ring-2 hover:ring-primary/40",
         className
       )}
     >
-      {path && <AvatarImage src={path} alt={name} className="object-cover" />}
-      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-        {initials(name)}
+      {hasValidPhoto && (
+        <AvatarImage src={path!} alt={name} className="object-cover" />
+      )}
+      <AvatarFallback className="bg-muted/90 text-muted-foreground flex items-center justify-center font-medium">
+        <UserIcon className="h-[52%] w-[52%] text-muted-foreground/75" />
       </AvatarFallback>
     </Avatar>
   );
 
-  if (!previewable || !path) {
+  if (!previewable || !hasValidPhoto) {
     return avatar;
   }
 
@@ -75,13 +85,13 @@ export function UserAvatar({
 
           <div className="my-4 flex items-center justify-center">
             <div className="relative h-56 w-56 sm:h-64 sm:w-64 overflow-hidden rounded-full border-4 border-border bg-muted shadow-xl ring-4 ring-primary/20">
-              <img src={path} alt={name} className="h-full w-full object-cover" />
+              <img src={path!} alt={name} className="h-full w-full object-cover" />
             </div>
           </div>
 
           <div className="flex items-center justify-center gap-2 pt-1">
             <Button type="button" variant="outline" size="sm" asChild>
-              <a href={path} target="_blank" rel="noopener noreferrer">
+              <a href={path!} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                 View full image
               </a>

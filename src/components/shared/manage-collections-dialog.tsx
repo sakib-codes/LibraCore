@@ -107,24 +107,24 @@ export function ManageCollectionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg w-full max-w-[calc(100vw-2rem)] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
               <FolderKanban className="h-5 w-5" />
             </div>
-            <div>
-              <DialogTitle className="text-base font-bold">Manage Research Collections</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-bold truncate">Manage Research Collections</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground truncate">
                 Organize your thematic reading lists, syllabus dossiers, and research archives.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 w-full min-w-0">
           {/* Collection list */}
-          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[320px] overflow-y-auto overflow-x-hidden pr-1 w-full min-w-0">
             {collections.length > 0 ? (
               collections.map((col) => {
                 const colorMeta =
@@ -134,26 +134,26 @@ export function ManageCollectionsDialog({
                 return (
                   <div
                     key={col.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-colors"
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-colors w-full min-w-0"
                   >
-                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
                         className={`h-3.5 w-3.5 rounded-full shrink-0 ${colorMeta.dotClass}`}
                       />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-foreground truncate">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h4 className="text-xs font-bold text-foreground truncate min-w-0 flex-1">
                             {col.name}
                           </h4>
                           <Badge
                             variant="outline"
-                            className="text-[10px] py-0 px-1.5 font-mono text-muted-foreground border-border/80"
+                            className="text-[10px] py-0 px-1.5 font-mono text-muted-foreground border-border/80 shrink-0"
                           >
                             {col.book_count} {col.book_count === 1 ? "book" : "books"}
                           </Badge>
                         </div>
                         {col.description && (
-                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          <p className="text-[11px] text-muted-foreground truncate mt-0.5" title={col.description}>
                             {col.description}
                           </p>
                         )}

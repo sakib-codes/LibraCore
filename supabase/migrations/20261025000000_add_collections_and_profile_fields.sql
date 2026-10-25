@@ -96,3 +96,14 @@ CREATE POLICY "Users can delete from own collection books"
       WHERE c.id = collection_id AND c.user_id = auth.uid()
     )
   );
+
+-- ==============================================================================
+-- 4. SCHOLAR PROFILE FIELDS EXTENSION
+-- ==============================================================================
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS academic_title text DEFAULT 'Scholar / Researcher',
+  ADD COLUMN IF NOT EXISTS institution text DEFAULT 'Institute of Advanced Scientific Research',
+  ADD COLUMN IF NOT EXISTS department text DEFAULT 'Department of Computer Science & Mathematics',
+  ADD COLUMN IF NOT EXISTS research_interests text[] DEFAULT ARRAY['Digital Libraries', 'Information Retrieval', 'Machine Learning'];
+

@@ -1,0 +1,61 @@
+%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 9 0 R >> >> >> endobj
+4 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R /Resources << /Font << /F1 9 0 R >> >> >> endobj
+5 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 9 0 R >> >> >> endobj
+6 0 obj << /Length 170 >> stream
+BT
+/F1 22 Tf
+50 720 Td
+(LibrisAI Scholarly Monograph - Page 1) Tj
+/F1 12 Tf
+0 -40 Td
+(Post-Quantum Cryptographic Bounds and Lattice Theorems) Tj
+0 -30 Td
+(Author: Dr. Alexander Vance, Cambridge & Oxford Press) Tj
+0 -40 Td
+(Abstract: Classical integer factorization primes face asymptotic decay.) Tj
+ET
+endstream endobj
+7 0 obj << /Length 160 >> stream
+BT
+/F1 22 Tf
+50 720 Td
+(Section 2: Lattice-Based Reductions - Page 2) Tj
+/F1 12 Tf
+0 -40 Td
+(Shortest Vector Problem (SVP) in dimension n = 512) Tj
+0 -30 Td
+(Theorem 2.1: IND-CCA2 security is preserved under chosen ciphertext attack.) Tj
+ET
+endstream endobj
+8 0 obj << /Length 150 >> stream
+BT
+/F1 22 Tf
+50 720 Td
+(Section 3: Empirical Benchmarks - Page 3) Tj
+/F1 12 Tf
+0 -40 Td
+(Empirical evaluation of 10,000 key exchanges demonstrates 0.4ms latency.) Tj
+0 -30 Td
+(Conclusion: Migration to ML-KEM standards is theoretically complete.) Tj
+ET
+endstream endobj
+9 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000135 00000 n 
+0000000257 00000 n 
+0000000379 00000 n 
+0000000501 00000 n 
+0000000724 00000 n 
+0000000937 00000 n 
+0000001140 00000 n 
+trailer << /Size 10 /Root 1 0 R >>
+startxref
+1215
+%%EOF

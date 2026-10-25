@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
   BookOpen,
@@ -23,8 +23,12 @@ import {
   SlidersHorizontal,
   X,
   RotateCcw,
+  Network,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,12 +36,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookCard } from "@/components/shared/book-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
+import { AddToCollectionDialog } from "@/components/shared/add-to-collection-dialog";
 import {
   CatalogFilterModal,
   FilterCriteria,
   DEFAULT_FILTER_CRITERIA,
 } from "@/components/shared/catalog-filter-modal";
 import { useAuth } from "@/hooks/use-auth";
+import { LandingPage } from "@/components/auth/landing-page";
 import { supabase } from "@/integrations/supabase/client";
 import type { Book, Category, FileType } from "@/integrations/supabase/types";
 
@@ -204,6 +210,7 @@ const SAMPLE_BOOKS: (Book & { categories?: Category | null })[] = [
 ];
 
 function CatalogHome() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = searchParams.get("q") || "";
   const categoryParam = searchParams.get("category") || "all";
@@ -216,6 +223,8 @@ function CatalogHome() {
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [selectedFormat, setSelectedFormat] = useState<string>("ALL");
   const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [targetBookForCollection, setTargetBookForCollection] = useState<{ id: string; title: string } | null>(null);
 
   // Milestone 12: Advanced Filter Criteria State
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -258,13 +267,13 @@ function CatalogHome() {
         }
 
         if (user) {
-          const { data: bookmarks } = await (supabase
-            .from("bookmarks") as any)
+          const { data: savedRows } = await (supabase
+            .from("saved_books") as any)
             .select("book_id")
             .eq("user_id", user.id);
 
-          if (bookmarks) {
-            setSavedBookIds(new Set(bookmarks.map((b: any) => b.book_id)));
+          if (savedRows) {
+            setSavedBookIds(new Set(savedRows.map((b: any) => b.book_id)));
           }
         }
       } catch (err) {
@@ -290,12 +299,12 @@ function CatalogHome() {
       nextSaved.delete(bookId);
       setSavedBookIds(nextSaved);
       toast.info("Removed from saved reading queue.");
-      await (supabase.from("bookmarks") as any).delete().eq("user_id", user.id).eq("book_id", bookId);
+      await (supabase.from("saved_books") as any).delete().eq("user_id", user.id).eq("book_id", bookId);
     } else {
       nextSaved.add(bookId);
       setSavedBookIds(nextSaved);
       toast.success("Saved to reading queue!");
-      await (supabase.from("bookmarks") as any).insert({ user_id: user.id, book_id: bookId });
+      await (supabase.from("saved_books") as any).insert({ user_id: user.id, book_id: bookId });
     }
   };
 
@@ -354,6 +363,7 @@ function CatalogHome() {
       return (b.download_count || 0) - (a.download_count || 0);
     });
 
+
   return (
     <div className="space-y-6">
       {/* Live Academic Repository Network Status Bar */}
@@ -368,6 +378,13 @@ function CatalogHome() {
           <span className="text-muted-foreground hidden md:inline">MIT • Oxford • Cambridge • Stanford Indexed Nodes</span>
         </div>
         <div className="flex items-center gap-3 text-muted-foreground font-mono text-[11px]">
+          <Link
+            href="/landing"
+            className="hidden sm:inline-flex items-center gap-1 text-xs font-sans font-medium text-indigo-600 dark:text-indigo-400 hover:underline mr-1"
+          >
+            <Sparkles className="h-3 w-3" />
+            <span>Platform Overview</span>
+          </Link>
           <span>4,280,150 Digital Objects</span>
           <span>•</span>
           <span className="text-emerald-600 dark:text-emerald-400 font-bold">99.98% Protocol Uptime</span>
@@ -375,9 +392,9 @@ function CatalogHome() {
       </div>
 
       {/* 2-Column Desktop Layout matching Image 5 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 items-start">
         {/* Left Side Rail (Mockup Image 5: Repository Search & Active Collections) */}
-        <aside className="lg:col-span-4 xl:col-span-3 space-y-5">
+        <aside className="lg:col-span-4 xl:col-span-3 space-y-4 lg:sticky lg:top-20">
           {/* Repository Search Card matching Image 5 */}
           <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-4">
             <h3 className="font-bold text-sm text-foreground tracking-tight">Repository Search</h3>
@@ -385,7 +402,7 @@ function CatalogHome() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search 4.2M papers, books... ⌘K"
+                placeholder="Filter monographs by keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-3 h-10 text-xs rounded-xl bg-muted/40 border-border/70"
@@ -421,29 +438,6 @@ function CatalogHome() {
               >
                 Audio Lectures
               </button>
-            </div>
-
-            {/* Advanced Multi-Filter Trigger */}
-            <div className="pt-2 border-t border-border/60">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsFilterModalOpen(true)}
-                className="w-full h-8 text-xs font-semibold gap-1.5 justify-between border-dashed border-border/80 hover:border-primary/50 text-foreground"
-              >
-                <span className="flex items-center gap-1.5">
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
-                  <span>Advanced Multi-Filter</span>
-                </span>
-                {activeFiltersCount > 0 ? (
-                  <Badge variant="secondary" className="h-5 px-1.5 bg-primary text-primary-foreground text-[10px] font-mono font-bold">
-                    {activeFiltersCount} Active
-                  </Badge>
-                ) : (
-                  <span className="text-[10px] text-muted-foreground font-mono">Refine</span>
-                )}
-              </Button>
             </div>
           </div>
 
@@ -491,91 +485,51 @@ function CatalogHome() {
           </div>
         </aside>
 
-        {/* Right Main Content (Mockup Image 5: Featured Monographs & AI Banner) */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-          {/* Featured Monograph Highlights Cards matching Image 5 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
-            {/* Card 1: Foundations of Deep Generative Networks */}
-            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs card-hover-effect flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border-0">
+        {/* Right Main Content (Streamlined & Space-Efficient) */}
+        <div className="lg:col-span-8 xl:col-span-9 space-y-4">
+          {/* Featured Monograph Highlights - Compact Scholarly Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Featured 1 */}
+            <div className="rounded-xl border border-border/70 bg-card/60 hover:bg-card p-3 shadow-2xs transition-colors flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 text-[10px] font-medium py-0 px-1.5 border-0">
                     Featured Text
                   </Badge>
-                  <Bookmark className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+                  <span className="text-[10px] text-muted-foreground truncate font-mono">Dr. Aris Thorne • MIT</span>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-foreground tracking-tight">
-                    Foundations of Deep Generative Networks
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-3">
-                    A comprehensive treatise on modern probabilistic modeling, score-based generative systems, and transformer architectures in academic contexts.
-                  </p>
-                </div>
+                <h3 className="font-medium text-xs sm:text-sm text-foreground/95 tracking-tight truncate">
+                  Foundations of Deep Generative Networks
+                </h3>
               </div>
-              <div className="mt-5 flex items-center justify-between pt-3 border-t border-border/50 text-xs">
-                <span className="text-muted-foreground font-medium truncate max-w-[170px]">
-                  Dr. Aris Thorne • MIT Press
-                </span>
-                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90">
-                  <Link href="/books/b-deep-gen">Access Record</Link>
-                </Button>
-              </div>
+              <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium shrink-0 rounded-lg hover:bg-secondary">
+                <Link href="/books/b-deep-gen">
+                  <span>Access</span>
+                  <ArrowRight className="h-3 w-3 ml-1 text-muted-foreground" />
+                </Link>
+              </Button>
             </div>
 
-            {/* Card 2: Large Language Models in Scholarly Retrieval */}
-            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs card-hover-effect flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-bold border-0">
+            {/* Featured 2 */}
+            <div className="rounded-xl border border-border/70 bg-card/60 hover:bg-card p-3 shadow-2xs transition-colors flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium py-0 px-1.5 border-0">
                     Open Access
                   </Badge>
-                  <Bookmark className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+                  <span className="text-[10px] text-muted-foreground truncate font-mono">Elena Rostova • Stanford</span>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-foreground tracking-tight">
-                    Large Language Models in Scholarly Retrieval
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-3">
-                    Investigating retrieval-augmented generation pipelines for automated academic literature reviews and precise citation tracing.
-                  </p>
-                </div>
+                <h3 className="font-medium text-xs sm:text-sm text-foreground/95 tracking-tight truncate">
+                  Large Language Models in Scholarly Retrieval
+                </h3>
               </div>
-              <div className="mt-5 flex items-center justify-between pt-3 border-t border-border/50 text-xs">
-                <span className="text-muted-foreground font-medium truncate max-w-[170px]">
-                  Elena Rostova • Stanford Univ.
-                </span>
-                <Button asChild size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90">
-                  <Link href="/books/b-llm-retrieval">Access Record</Link>
-                </Button>
-              </div>
+              <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-xs font-medium shrink-0 rounded-lg hover:bg-secondary">
+                <Link href="/books/b-llm-retrieval">
+                  <span>Access</span>
+                  <ArrowRight className="h-3 w-3 ml-1 text-muted-foreground" />
+                </Link>
+              </Button>
             </div>
-          </div>
-
-          {/* Wide Indigo Banner matching Image 5 */}
-          <div className="rounded-2xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-800 p-6 sm:p-7 text-white shadow-md relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="relative z-10 space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-                <Sparkles className="h-3 w-3" /> AI Librarian Assistant Active
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                Need help synthesizing literature or finding citations?
-              </h2>
-              <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed">
-                Open the LibrisAI Assistant widget on the bottom right to query full-text sources instantly with Gemini-powered reasoning.
-              </p>
-            </div>
-
-            <Button
-              size="sm"
-              onClick={() => {
-                const btn = document.querySelector('button[aria-label="Open AI Librarian"]') as HTMLButtonElement;
-                if (btn) btn.click();
-              }}
-              className="relative z-10 bg-white text-indigo-700 hover:bg-white/90 font-bold text-xs shadow-md shrink-0 self-start sm:self-auto gap-2"
-            >
-              <Sparkles className="h-3.5 w-3.5" /> Launch Literature AI
-            </Button>
           </div>
 
           {/* Catalog Format & Filter Controls */}
@@ -622,6 +576,38 @@ function CatalogHome() {
                   <TabsTrigger value="AUDIO" className="text-xs font-medium">Audio</TabsTrigger>
                 </TabsList>
               </Tabs>
+
+              {/* View Mode Switcher (Compact Grid vs Dense List) */}
+              <div className="flex items-center rounded-lg border border-border/80 bg-secondary/50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={cn(
+                    "p-1.5 rounded-md transition-colors",
+                    viewMode === "grid"
+                      ? "bg-card text-foreground shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Compact Grid View"
+                  aria-label="Compact Grid View"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "p-1.5 rounded-md transition-colors",
+                    viewMode === "list"
+                      ? "bg-card text-foreground shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Dense Scholarly List View"
+                  aria-label="Dense Scholarly List View"
+                >
+                  <List className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -715,22 +701,36 @@ function CatalogHome() {
             </div>
           )}
 
-          {/* Monographs Grid - Responsive 3-4 Columns on Desktop */}
+          {/* Monographs Catalog - Responsive Grid or Dense Scholarly List */}
           <section id="featured-books">
             {loading ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <LoadingSkeleton key={i} variant="card" />
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4"
+                    : "flex flex-col gap-2.5"
+                }
+              >
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <LoadingSkeleton key={i} variant={viewMode === "grid" ? "card" : "row"} />
                 ))}
               </div>
             ) : filteredBooks.length > 0 ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4"
+                    : "flex flex-col gap-2.5"
+                }
+              >
                 {filteredBooks.map((book) => (
                   <BookCard
                     key={book.id}
                     book={book}
                     isSaved={savedBookIds.has(book.id)}
                     onToggleSave={toggleSave}
+                    onAddToCollection={(target) => setTargetBookForCollection(target)}
+                    variant={viewMode}
                   />
                 ))}
               </div>
@@ -769,14 +769,50 @@ function CatalogHome() {
         }}
         totalResultsCount={filteredBooks.length}
       />
+
+      {/* Modal: Add to Collection */}
+      {targetBookForCollection && (
+        <AddToCollectionDialog
+          open={!!targetBookForCollection}
+          onOpenChange={(open) => {
+            if (!open) setTargetBookForCollection(null);
+          }}
+          bookId={targetBookForCollection.id}
+          bookTitle={targetBookForCollection.title}
+          userId={user?.id || "demo"}
+        />
+      )}
     </div>
   );
 }
 
 export default function HomePage() {
-  return (
-    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-      <CatalogHome />
-    </Suspense>
-  );
+  const { user, loading: authLoading } = useAuth();
+
+  // If user is authenticated, render the Monograph Catalog Explorer ("this screen")
+  if (user) {
+    return (
+      <Suspense
+        fallback={
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
+            <Loader2 className="h-9 w-9 animate-spin text-primary" />
+          </div>
+        }
+      >
+        <CatalogHome />
+      </Suspense>
+    );
+  }
+
+  // During initial auth check, render a clean, precisely centered full-screen loader
+  if (authLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
+        <Loader2 className="h-9 w-9 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Otherwise, the index should always be the landing page!
+  return <LandingPage />;
 }

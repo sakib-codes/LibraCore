@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
   images: {
     unoptimized: true,
@@ -13,6 +14,11 @@ const nextConfig = {
         hostname: "localhost",
       },
     ],
+  },
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+    return config;
   },
 };
 

@@ -1,15 +1,34 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/navbar";
 import { ChatWidget } from "@/components/layout/chat-widget";
 import { CommandMenu } from "@/components/shared/command-menu";
 
+/** Routes that bypass the standard AppShell chrome (navbar, footer, chat widget) */
+const AUTH_ROUTES = ["/login", "/register", "/reset-password", "/landing"];
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const isAuthRoute = AUTH_ROUTES.some(
+    (route) => pathname === route || pathname?.startsWith(`${route}/`)
+  );
+
+  // Auth pages and unauthenticated guests on the index route (/) render bare —
+  // LandingPage provides its own dedicated floating capsule header and footer
+  if (isAuthRoute || (pathname === "/" && !user)) {
+    return <>{children}</>;
+  }
+
   return (
-    <div className="min-h-screen w-full max-w-full bg-background bg-atmospheric-glow flex flex-col justify-between overflow-x-hidden text-foreground">
+    <div className="min-h-screen w-full max-w-full bg-background bg-atmospheric-glow flex flex-col justify-between overflow-x-clip text-foreground">
       <div className="w-full">
         <Navbar />
-        <main className="mx-auto w-full max-w-[1720px] 2xl:max-w-[1840px] min-w-0 px-4 pt-4 pb-16 sm:px-6 sm:pt-6 lg:px-8 xl:px-10 overflow-x-hidden">
+        <main className="mx-auto w-full max-w-[1720px] 2xl:max-w-[1840px] min-w-0 px-4 pt-4 pb-16 sm:px-6 lg:px-8 xl:px-10 overflow-x-clip">
           {children}
         </main>
       </div>
@@ -37,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               Citation Index
             </Link>
             <Link href="#" className="hover:text-foreground transition-colors">
-              Ethics & Privacy
+              Ethics &amp; Privacy
             </Link>
             <Link href="/admin" className="font-semibold text-primary hover:underline transition-colors">
               Librarian Portal

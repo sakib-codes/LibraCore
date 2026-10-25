@@ -149,15 +149,15 @@ export function AddToCollectionDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-full max-w-[calc(100vw-2rem)] overflow-hidden">
         <DialogHeader>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
               <FolderPlus className="h-5 w-5" />
             </div>
-            <div>
-              <DialogTitle className="text-base font-bold">Research Collections</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground line-clamp-1">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-bold truncate">Research Collections</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground truncate">
                 Save &quot;{bookTitle}&quot; to your research dossiers
               </DialogDescription>
             </div>
@@ -165,13 +165,13 @@ export function AddToCollectionDialog({
         </DialogHeader>
 
         {/* Existing Collections List */}
-        <div className="space-y-3 py-2 max-h-[320px] overflow-y-auto pr-1">
+        <div className="space-y-3 py-2 max-h-[320px] overflow-y-auto overflow-x-hidden w-full min-w-0 pr-1">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : collections.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2 w-full min-w-0">
               {collections.map((col) => {
                 const colorMeta =
                   COLLECTION_COLORS[(col.color as CollectionColor) || "indigo"] ||
@@ -183,22 +183,22 @@ export function AddToCollectionDialog({
                     key={col.id}
                     type="button"
                     onClick={() => handleToggle(col)}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+                    className={`w-full min-w-0 flex items-center justify-between p-3 rounded-xl border text-left transition-all gap-3 ${
                       isSelected
                         ? "border-primary/50 bg-primary/5 shadow-2xs"
                         : "border-border/70 hover:border-border hover:bg-muted/40"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
                         className={`h-3 w-3 rounded-full shrink-0 ${colorMeta.dotClass}`}
                       />
-                      <div>
-                        <p className="text-xs font-bold text-foreground line-clamp-1">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-foreground truncate">
                           {col.name}
                         </p>
                         {col.description && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                             {col.description}
                           </p>
                         )}
@@ -209,7 +209,7 @@ export function AddToCollectionDialog({
                     </div>
 
                     <div
-                      className={`flex h-6 w-6 items-center justify-center rounded-full border transition-all ${
+                      className={`flex h-6 w-6 items-center justify-center rounded-full border transition-all shrink-0 ${
                         isSelected
                           ? "bg-primary border-primary text-primary-foreground"
                           : "border-border/80 bg-background text-transparent"

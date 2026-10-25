@@ -1,8 +1,12 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "libris-ai-dlms"
-compatibility_date = "2024-09-23"
+name = "libracore"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
 [vars]
 NEXT_PUBLIC_SITE_URL = "http://localhost:3000"

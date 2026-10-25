@@ -19,6 +19,8 @@ import {
   X,
   Sparkles,
   Command,
+  SunMoon,
+  Network,
 } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,12 +107,46 @@ export function CommandMenu() {
   const { user, profile } = useAuth();
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // Global keydown listener for ⌘K / Ctrl+K
+  // Global keydown listener for ⌘K / ⌘L / ⌘G / ⌘D
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // Don't trigger non-spotlight shortcuts if user is actively typing in an input or textarea
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      // ⌘K / Ctrl+K toggles the Command Palette from anywhere
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((prev) => !prev);
+        return;
+      }
+
+      if (isInput) return;
+
+      // ⌘L / Ctrl+L toggles the Libris AI Librarian drawer
+      if ((e.key === "l" || e.key === "L") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("toggle-libris-ai-librarian"));
+        return;
+      }
+
+      // ⌘G / Ctrl+G navigates to the Citation Graph
+      if ((e.key === "g" || e.key === "G") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen(false);
+        router.push("/catalog/graph");
+        return;
+      }
+
+      // ⌘D / Ctrl+D toggles theme
+      if ((e.key === "d" || e.key === "D") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("toggle-libris-theme"));
+        return;
       }
     };
 
@@ -124,7 +160,7 @@ export function CommandMenu() {
       window.removeEventListener("keydown", down);
       window.removeEventListener("open-libris-command-palette", handleCustomTrigger);
     };
-  }, []);
+  }, [router]);
 
   // Fetch live books from Supabase if available
   useEffect(() => {
@@ -165,12 +201,29 @@ export function CommandMenu() {
   // 1. Navigation items
   const navs: CommandItem[] = [
     {
+      id: "nav-landing",
+      title: "LibrisAI Platform Overview & Features",
+      subtitle: "Discover the neural knowledge synthesis engine & institutional architecture",
+      icon: Sparkles,
+      section: "Navigation",
+      onSelect: () => runCommand(() => router.push("/landing")),
+    },
+    {
       id: "nav-catalog",
       title: "Browse Complete Catalog",
       subtitle: "Explore indexed research papers, monographs & audio lectures",
       icon: Compass,
       section: "Navigation",
       onSelect: () => runCommand(() => router.push("/")),
+    },
+    {
+      id: "nav-citation-graph",
+      title: "Interactive Citation Graph & Academic Network",
+      subtitle: "Visualize cross-monograph citations, precedents & discipline topology",
+      badge: "⌘G",
+      icon: Network,
+      section: "Navigation",
+      onSelect: () => runCommand(() => router.push("/catalog/graph")),
     },
     {
       id: "nav-dashboard",
@@ -251,14 +304,17 @@ export function CommandMenu() {
   const toolItems: CommandItem[] = [
     {
       id: "tool-ai",
-      title: "Consult Gemini AI Librarian",
+      title: "Consult Libris AI Librarian",
       subtitle: "Open grounded literature synthesis & question answering assistant",
-      badge: "Gemini 3.5",
+      badge: "⌘L",
       icon: Sparkles,
       section: "Tools",
       onSelect: () => {
         runCommand(() => {
-          const chatBtn = document.querySelector('button[aria-label="Open AI Librarian"]') as HTMLButtonElement;
+          window.dispatchEvent(new CustomEvent("open-libris-ai-librarian"));
+          const chatBtn = (document.querySelector('button[aria-label="Open LibrisAI Librarian"]') ||
+            document.querySelector('button[aria-label="Open AI Librarian"]') ||
+            document.querySelector('button[data-testid="ai-librarian-trigger"]')) as HTMLButtonElement | null;
           if (chatBtn) chatBtn.click();
         });
       },
@@ -270,6 +326,19 @@ export function CommandMenu() {
       icon: Plus,
       section: "Tools",
       onSelect: () => runCommand(() => router.push("/dashboard")),
+    },
+    {
+      id: "tool-theme",
+      title: "Toggle Theme (Light / Dark Mode)",
+      subtitle: "Smoothly switch between light and dark repository appearance",
+      badge: "⌘D",
+      icon: SunMoon,
+      section: "Tools",
+      onSelect: () => {
+        runCommand(() => {
+          window.dispatchEvent(new CustomEvent("toggle-libris-theme"));
+        });
+      },
     },
   ];
 
@@ -442,8 +511,8 @@ export function CommandMenu() {
           </div>
 
           {/* Footer Controls matching academic UI */}
-          <div className="flex items-center justify-between border-t border-border/70 bg-muted/40 px-4 py-2.5 text-[11px] text-muted-foreground font-mono">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between border-t border-border/70 bg-muted/40 px-4 py-2.5 text-[11px] text-muted-foreground font-mono gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1">
                 <kbd className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px]">↑</kbd>
                 <kbd className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px]">↓</kbd>
@@ -456,6 +525,14 @@ export function CommandMenu() {
               <span className="flex items-center gap-1">
                 <kbd className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px]">ESC</kbd>
                 <span className="text-[10px] ml-1">Close</span>
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1">
+                <kbd className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px]">⌘L</kbd>
+                <span className="text-[10px] ml-1">Librarian</span>
+              </span>
+              <span className="hidden sm:inline-flex items-center gap-1">
+                <kbd className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px]">⌘G</kbd>
+                <span className="text-[10px] ml-1">Citation Graph</span>
               </span>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-primary font-sans font-semibold">

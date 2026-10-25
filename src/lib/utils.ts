@@ -43,3 +43,54 @@ export function initials(name?: string | null): string {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+export const DEFAULT_BOOK_COVER =
+  "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80";
+
+/**
+ * Safely extract primary book cover URL, whether stored as single URL or JSON array of images
+ */
+export function getCoverUrl(
+  coverUrl?: string | null,
+  fallback: string = DEFAULT_BOOK_COVER
+): string {
+  if (!coverUrl || !coverUrl.trim()) return fallback;
+  const trimmed = coverUrl.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "string") {
+        return parsed[0] || fallback;
+      }
+    } catch {
+      // not JSON array, return string
+    }
+  }
+  return trimmed || fallback;
+}
+
+/**
+ * Safely return all images (primary cover + all preview pages) from cover_url field
+ */
+export function getAllCoverImages(
+  coverUrl?: string | null,
+  fallback: string = DEFAULT_BOOK_COVER
+): string[] {
+  if (!coverUrl || !coverUrl.trim()) return [fallback];
+  const trimmed = coverUrl.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.filter(
+          (item): item is string => typeof item === "string" && item.trim().length > 0
+        );
+        if (valid.length > 0) return valid;
+      }
+    } catch {
+      // not JSON array
+    }
+  }
+  return [trimmed || fallback];
+}
+

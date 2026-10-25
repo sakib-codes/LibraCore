@@ -71,36 +71,55 @@ export async function updateSession(request: NextRequest) {
   if (pathname === "/login" || pathname === "/register") {
     if (activeUser) {
       const url = request.nextUrl.clone();
-      url.pathname = activeRole === "admin" ? "/admin" : "/dashboard";
+      url.pathname = activeRole === "admin" ? "/admin" : "/";
       return NextResponse.redirect(url);
     }
+    return supabaseResponse;
   }
 
-  // Protect /dashboard routes (requires authentication)
-  if (pathname.startsWith("/dashboard")) {
-    if (!activeUser) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("redirectTo", pathname);
-      return NextResponse.redirect(url);
-    }
+  // Public routes: /reset-password is accessible without signing in
+  if (pathname === "/reset-password") {
+    return supabaseResponse;
+  }
+
+  // Canonicalize /landing to / so the index route (/) is always the landing page for guests
+  if (pathname === "/landing") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  // Root URL (/) is accessible to both guests and members:
+  // - If unauthenticated: src/app/page.tsx renders the Landing Page
+  // - If authenticated: src/app/page.tsx renders the Catalog Explorer ("this screen")
+  if (pathname === "/") {
+    return supabaseResponse;
+  }
+
+  // Protect all internal academic repository routes:
+  // /dashboard, /admin, /catalog, /books, /categories
+  // If unauthenticated, redirect to the landing page at /
+  const isProtectedPath =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/catalog") ||
+    pathname.startsWith("/books") ||
+    pathname.startsWith("/categories");
+
+  if (isProtectedPath && !activeUser) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
   }
 
   // Protect /admin routes (requires 'admin' role)
   if (pathname.startsWith("/admin")) {
-    if (!activeUser) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("redirectTo", pathname);
-      return NextResponse.redirect(url);
-    }
-
     if (activeRole === "admin") {
       return supabaseResponse;
     }
 
     // Check user_roles table for 'admin' if role not determined from session
-    if (activeUser.id) {
+    if (activeUser && activeUser.id) {
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")

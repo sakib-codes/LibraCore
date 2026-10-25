@@ -1,17 +1,20 @@
 # DESIGN_SYSTEM.md — UI Styling, Theme Tokens & Stitch Reference
 
-## 1. Visual Identity (Ported from EduBridge Reference)
-- **Aesthetic:** Clean, academic, high-contrast light mode with crisp borders and subtle depth.
-- **Color Palette (Tailwind / CSS Variables in `src/styles/globals.css`):**
-  - Background Surface: `bg-slate-50` (`#F8FAFC`) for dashboard canvases, `bg-white` (`#FFFFFF`) for cards, tables, and modals.
-  - Primary Accent: Deep Academic Indigo (`bg-indigo-600` / `#4F46E5`, hover `hover:bg-indigo-700`, light badge `bg-indigo-50 text-indigo-700 border-indigo-200`).
-  - Borders & Dividers: `border-slate-200` (`#E2E8F0`), subtle card shadow `shadow-sm hover:shadow-md transition-all`.
-  - Semantic Status Badges (`src/components/shared/status-badge.tsx`):
-    - `PDF`: `bg-rose-50 text-rose-700 border-rose-200`
-    - `EPUB` / `DOC`: `bg-indigo-50 text-indigo-700 border-indigo-200`
-    - `AUDIO`: `bg-amber-50 text-amber-700 border-amber-200`
-    - `IMAGE`: `bg-emerald-50 text-emerald-700 border-emerald-200`
-    - `Active`: `bg-emerald-50 text-emerald-700` | `Suspended`: `bg-rose-50 text-rose-700`
+## 1. Visual Identity (Dual Light & Google AI Studio Dark Mode)
+- **Light Aesthetic:** Clean, academic slate theme with crisp borders and subtle depth.
+- **Dark Aesthetic (Google AI Studio Obsidian Palette):**
+  - **Philosophy:** Eliminates optical halation, pupil fatigue, and glaring contrast by avoiding pure `#FFFFFF` (100% luminance) on dark backgrounds, avoiding saturated neon chromatic tension, and restraining typography weights from thick `font-black` (900) down to `font-semibold` (600) / `font-medium` (500).
+  - **Canvas Background:** Pure neutral obsidian charcoal `#131314` (`hsl(240 3% 7.8%)`) — matches Material 3 Dark Surface.
+  - **Surface Container (Cards & Sidebar):** Elevated graphite slate `#1E1F20` (`hsl(240 3% 12.2%)`).
+  - **Surface High (Buttons, Active Pills, Inputs):** Velvet graphite pill `#282A2C` (`hsl(210 4% 16.5%)`).
+  - **Dividers & Low-Contrast Borders:** `#303134` / `#3C4043` (`hsl(215 5% 21%)`) — whisper-quiet separation without cage lines.
+  - **Primary Foreground Text:** Soft warm grey `#E3E3E3` (`hsl(210 6% 88.5%)`) — provides a restful ~13:1 contrast ratio that completely halts glare.
+  - **Secondary / Muted Foreground:** Google neutral grey `#9AA0A6` (`hsl(215 7% 62.5%)`) — comfortable sustained reading for metadata and labels.
+  - **Primary Interactive Accent:** Soft cornflower / periwinkle `#A8C7FA` (`hsl(217 91% 82%)`) — gentle desaturated pastel.
+  - **Semantic Status Badges:** Neutral pill chips (`bg-secondary text-muted-foreground border border-border/80 text-[10px] rounded-full`) to eliminate neon distraction.
+- **Typography Weight Rules in Dark Mode:**
+  - Never use `font-black` (900) or `font-extrabold` (800) in dark mode headings or numbers. Dark backgrounds visually expand glyph weight; clamp major headings to `font-semibold` (600) and subtitles to `font-medium` (500) or `font-normal` (400).
+  - Use rounded-full pill geometry for active sidebar links, tabs, and filters.
 
 ## 2. Typography & Spacing
 - **Font:** Inter / Geist Sans (`font-sans antialiased`).

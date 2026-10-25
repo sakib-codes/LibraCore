@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   FolderOpen,
   Cpu,
@@ -10,14 +11,15 @@ import {
   Headphones,
   BookOpen,
   ArrowRight,
-  Sparkles,
   BookCheck,
   Search,
+  Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Category, Book } from "@/integrations/supabase/types";
 
@@ -88,8 +90,16 @@ const DEFAULT_CATEGORIES: CategoryWithCounts[] = [
 ];
 
 export default function CategoriesPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [categories, setCategories] = useState<CategoryWithCounts[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login?redirectTo=/categories");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     async function loadData() {
@@ -129,6 +139,17 @@ export default function CategoriesPage() {
 
     loadData();
   }, []);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-[calc(100vh-14rem)] flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-xs text-muted-foreground font-mono">
+          Verifying institutional category access...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -187,24 +208,6 @@ export default function CategoriesPage() {
             </Card>
           );
         })}
-      </div>
-
-      {/* AI Curation Callout Banner */}
-      <div className="rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50 via-white to-indigo-50/50 dark:from-indigo-950/20 dark:via-background dark:to-indigo-950/20 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-foreground">Need a personalized syllabus or interdisciplinary search?</h4>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Ask our Google Gemini-powered AI Librarian to assemble reading recommendations across categories.
-            </p>
-          </div>
-        </div>
-        <Button asChild size="sm" className="bg-primary text-primary-foreground text-xs shrink-0">
-          <Link href="/books/b1">Try Contextual AI</Link>
-        </Button>
       </div>
     </div>
   );

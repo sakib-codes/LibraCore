@@ -21,6 +21,10 @@ export interface Database {
           avatar_url: string | null;
           phone: string | null;
           bio: string | null;
+          academic_title?: string | null;
+          institution?: string | null;
+          department?: string | null;
+          research_interests?: string[] | null;
           role: AppRole;
           is_suspended: boolean;
           created_at: string;
@@ -34,6 +38,10 @@ export interface Database {
           avatar_url?: string | null;
           phone?: string | null;
           bio?: string | null;
+          academic_title?: string | null;
+          institution?: string | null;
+          department?: string | null;
+          research_interests?: string[] | null;
           role?: AppRole;
           is_suspended?: boolean;
           created_at?: string;
@@ -47,6 +55,10 @@ export interface Database {
           avatar_url?: string | null;
           phone?: string | null;
           bio?: string | null;
+          academic_title?: string | null;
+          institution?: string | null;
+          department?: string | null;
+          research_interests?: string[] | null;
           role?: AppRole;
           is_suspended?: boolean;
           created_at?: string;
@@ -311,6 +323,98 @@ export interface Database {
           },
         ];
       };
+      monograph_comments: {
+        Row: {
+          id: string;
+          book_id: string;
+          user_id: string | null;
+          user_name: string;
+          user_avatar: string | null;
+          user_title: string | null;
+          page_number: number | null;
+          selected_passage: string | null;
+          review_tag: "Methodology" | "Hypothesis" | "Proof Critique" | "Citation Request" | "General Review";
+          comment_text: string;
+          is_resolved: boolean;
+          likes_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          book_id: string;
+          user_id?: string | null;
+          user_name?: string;
+          user_avatar?: string | null;
+          user_title?: string | null;
+          page_number?: number | null;
+          selected_passage?: string | null;
+          review_tag?: "Methodology" | "Hypothesis" | "Proof Critique" | "Citation Request" | "General Review";
+          comment_text: string;
+          is_resolved?: boolean;
+          likes_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          book_id?: string;
+          user_id?: string | null;
+          user_name?: string;
+          user_avatar?: string | null;
+          user_title?: string | null;
+          page_number?: number | null;
+          selected_passage?: string | null;
+          review_tag?: "Methodology" | "Hypothesis" | "Proof Critique" | "Citation Request" | "General Review";
+          comment_text?: string;
+          is_resolved?: boolean;
+          likes_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      comment_replies: {
+        Row: {
+          id: string;
+          comment_id: string;
+          user_id: string | null;
+          user_name: string;
+          user_avatar: string | null;
+          user_title: string | null;
+          reply_text: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          comment_id: string;
+          user_id?: string | null;
+          user_name?: string;
+          user_avatar?: string | null;
+          user_title?: string | null;
+          reply_text: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          comment_id?: string;
+          user_id?: string | null;
+          user_name?: string;
+          user_avatar?: string | null;
+          user_title?: string | null;
+          reply_text?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "comment_replies_comment_id_fkey";
+            columns: ["comment_id"];
+            isOneToOne: false;
+            referencedRelation: "monograph_comments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -339,6 +443,12 @@ export type Download = Database["public"]["Tables"]["downloads"]["Row"];
 export type Collection = Database["public"]["Tables"]["collections"]["Row"];
 export type CollectionBook = Database["public"]["Tables"]["collection_books"]["Row"];
 export type CollectionColor = "indigo" | "emerald" | "amber" | "rose" | "cyan" | "purple" | "blue";
+
+export type ReviewTag = "Methodology" | "Hypothesis" | "Proof Critique" | "Citation Request" | "General Review";
+export type MonographComment = Database["public"]["Tables"]["monograph_comments"]["Row"] & {
+  replies?: CommentReply[];
+};
+export type CommentReply = Database["public"]["Tables"]["comment_replies"]["Row"];
 
 export type BookWithCategory = Book & {
   categories?: Category | null;

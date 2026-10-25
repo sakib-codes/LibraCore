@@ -60,31 +60,30 @@ export interface NavLinkItem {
 }
 
 export const PUBLIC_NAV_LINKS: NavLinkItem[] = [
+  { label: "Overview", href: "/landing" },
   { label: "Catalog", href: "/" },
   { label: "Categories", href: "/categories" },
-  { label: "Featured", href: "/#featured" },
+  { label: "Citation Graph", href: "/catalog/graph" },
 ];
 
 export const USER_NAV_LINKS: NavLinkItem[] = [
   { label: "Library Catalog", href: "/" },
-  { label: "My Dashboard", href: "/dashboard" },
-  { label: "Saved Books", href: "/dashboard?tab=saved" },
-  { label: "Reading History", href: "/dashboard?tab=history" },
+  { label: "Citation Graph", href: "/catalog/graph" },
+  { label: "Research Workspace", href: "/dashboard" },
 ];
 
 export const ADMIN_NAV_LINKS: NavLinkItem[] = [
-  { label: "Catalog View", href: "/" },
+  { label: "Library Catalog", href: "/" },
+  { label: "Citation Graph", href: "/catalog/graph" },
+  { label: "Research Workspace", href: "/dashboard" },
   { label: "Admin Console", href: "/admin" },
-  { label: "Manage Books", href: "/admin?tab=books" },
-  { label: "Categories", href: "/admin?tab=categories" },
-  { label: "Users & Roles", href: "/admin?tab=users" },
 ];
 
 export const APP_CONFIG = {
   name: "LibrisAI",
   fullName: "LibrisAI Digital Library",
   tagline: "Intelligent Digital Knowledge Repository & AI Librarian",
-  description: "Browse, preview, and query books, journals, audiobooks, and documents with Google Gemini AI.",
+  description: "Browse, preview, and query books, journals, audiobooks, and documents with Libris AI.",
   storageBuckets: {
     covers: "library-covers",
     files: "library-files",
